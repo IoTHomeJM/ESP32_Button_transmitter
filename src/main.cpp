@@ -49,7 +49,7 @@ boolean ServerActive = 1;
 #include <WiFi.h>
 
 #include "SPIFFS.h"
-char* ssid = "DimModule";       // Enter SSID here
+char* ssid = "SWModule";        // Enter SSID here
 char* password = "1234567890";  //Enter Password here
 WebServer server(80);
 //<--server
