@@ -468,7 +468,7 @@ display:none;
  <!-- konfiguracja ESP32 -->
   <section class="bg-primary text-white mb-0" id="confesp32">
    <div class="container">
-		<h2 class="text-center text-uppercase text-secondary mb-0">Konfiguracja ESP32</h2>
+		<h2 class="text-center text-uppercase text-secondary mb-0">Konfiguracja Przycisku</h2>
 		
 		
 		<p class="m-5 "></p>
@@ -536,6 +536,12 @@ display:none;
 				<input class="contact-form__input contact-form__input--text" id="23" name="NRFchannel" type="number" min="1" max="125" value="1"/>
 				</span>
 			</div>
+            <div class="contact-form__input-group">
+				<label class="contact-form__label" for="35">Adres (1-254):</label></br>
+				<span class="p-4" >
+				<input class="contact-form__input contact-form__input--text" id="35" name="RF24_rxAddr" type="number" min="1" max="254" value="1"/>
+				</span>
+			</div>
 		
         </div>
 	  </div>
@@ -596,7 +602,7 @@ display:none;
         <div class="col-md-6 col-lg-6">
 			<h3 class="text-center text-uppercase text-white mb-0">ŚWIATŁO</h2>
 			<div class="contact-form__input-group">
-				<label class="contact-form__label" >Rozdzielczosc LED (bit)</label></br>
+				<label class="contact-form__label" >NIE AKTYWNE Rozdzielczosc LED (bit)</label></br>
 				<span class="p-4" >
 				<select class="contact-form__input contact-form__input--select" id="13" name="ResolutionLED">
 					<option>10</option><option>8</option><option>6</option>
@@ -604,7 +610,7 @@ display:none;
 				</span>
 			</div>			
 			<div class="contact-form__input-group">
-				<label class="contact-form__label" >Czestotliwosc LED (Hz)</label></br>
+				<label class="contact-form__label" >NIE AKTYWNE  Czestotliwosc LED (Hz)</label></br>
 				<span class="p-4" >
 				
 				<input class="contact-form__input contact-form__input--text" id="12" name="FreqLED" type="number" value="25000"/>
@@ -651,16 +657,16 @@ display:none;
 				</span>
 			</div>
 			
-			<div class="contact-form__input-group">
-				<label class="contact-form__label" for="32">DimUpDownResolutionSW</label></br>
-				<span class="p-4" >
+			<div class="contact-form__input-group" title="Szybkosc regulacji jasnosci LED za pomoca przycisku">
+				<label class="contact-form__label" for="32" >DimUpDownResolutionSW (0-40)</label></br>
+            	<span class="p-4" >
 				<input class="contact-form__input contact-form__input--text" id="32" name="DimUpDownResolution" type="number" min="0" max="40" value="20"//>
 				</span>
 			</div>
 			
 
 			<div class="contact-form__input-group">
-				<label class="contact-form__label">LightOnBoot(Dim1):</label>	</br>
+				<label class="contact-form__label">NIE AKTYWNE tylko w dimer LightOnBoot(Dim1):</label>	</br>
 				<span class="p-4" >
 				<label class="contact-form__label contact-form__label--radio " for="1">TAK</label>						
 				<input class="contact-form__input contact-form__input--radio" id="1" name="LightOnBoot" type="radio" value="1" checked="true"/>
