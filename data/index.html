@@ -569,15 +569,24 @@ display:none;
 				<label class="contact-form__label contact-form__label--radio" for="8">NIE</label>
 				<input class="contact-form__input contact-form__input--radio" id="8" name="OTAActive" type="radio" value="0" checked="true"/>			
 			</div>
-			<div class="contact-form__input-group">
-				<label class="contact-form__label">Serial Print:</label>	
-				</br><span class="p-4" >
-				<label class="contact-form__label contact-form__label--radio" for="24">TAK</label>		
-				<input class="contact-form__input contact-form__input--radio" id="24" name="show_print_comment" type="radio" value="1" checked="true"/>
-				</span >
-				<label class="contact-form__label contact-form__label--radio" for="25">NIE</label>
-				<input class="contact-form__input contact-form__input--radio" id="25" name="show_print_comment" type="radio" value="0" />			
-			</div>
+			<div class="contact-form__input-group">    
+				<label class="contact-form__label">Tryb Seriala:</label>	
+				</br>
+                <span class="p-4" >
+				    <label class="contact-form__label contact-form__label--radio" for="24">Wyłączony</label>		
+				    <input class="contact-form__input contact-form__input--radio" id="24" name="serialmode" type="radio" value="0" checked="true"/>
+                </span >
+                </br>
+                <span class="p-4" >
+                    <label class="contact-form__label contact-form__label--radio" for="25">Włączony LOG</label>
+				    <input class="contact-form__input contact-form__input--radio" id="25" name="serialmode" type="radio" value="1" />
+                </span>	
+                </br>
+                <span class="p-4" >
+                    <label class="contact-form__label contact-form__label--radio" for="35">Włączony GSM</label>
+				    <input class="contact-form__input contact-form__input--radio" id="35" name="serialmode" type="radio" value="2" />			
+                </span>
+            </div>
 			<div class="contact-form__input-group">
 				<label class="contact-form__label" >Ustawienia fabryczne:</label>	
 				</br><span class="p-4" >

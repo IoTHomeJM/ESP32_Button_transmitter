@@ -1,5 +1,5 @@
 
-#include <Adafruit_SH1106.h>   // oled 1.3 cala
+//#include <Adafruit_SH1106.h>   // oled 1.3 cala
 #include <Adafruit_SSD1306.h>  // oled 0.9 cala
 #include <Arduino.h>
 #include <ArduinoOTA.h>
@@ -42,7 +42,7 @@ uint64_t zapamietanyCzasEEPROM = 0;
 
 // LightDimmerESP32 DimLED1;
 LightDimmerESP32 led[3];
-bool dim1 = 0, dim2 = 0, dim3 = 0, LightOnBoot = 1;
+bool dim1 = 0, dim2 = 0, dim3 = 0, LightOnBoot = 0;
 uint8_t DimUpDownResolution = 20;  // szybkosc regulacji jasnosci led za pomoca przycisku
 
 // dla przycisku, regulacja jasnosci
@@ -74,12 +74,14 @@ bool OnDevices[25] = {0};  // lista wlaczonych urzadzen - tylko dla mastera. tes
 
 SimpleTimer timer;
 
-const uint8_t SW1pin = 0;
+const uint8_t SW1pin = 19;
+//const uint8_t SW1pin = 0;
 const uint8_t SW1TouchPin = 33;
 
 //--> NRF settings
 byte NRFbuf[32] = {0};  // bufor dla nrf
-byte RF24_rxAddr[6] = "00001";
+//byte RF24_rxAddr[6] = "00001";
+uint8_t RF24_rxAddr = 1;
 uint8_t NRFchannel = 1;
 uint8_t PALevel = 1;             // 0=MIN, 1=LOW, 2=HIGH, 3=MAX
 RF24 radio(27, 15, 14, 12, 13);  //JLU //CE CSN SCK MISO MOSI // ta trzeba uzywac do ESP32 https://github.com/nhatuan84/RF24
@@ -93,12 +95,12 @@ float celsius = -99;
 //<--
 
 //--> dla oled 0.9 cala Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-// #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-// Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
+#define OLED_RESET -1  // Reset pin # (or -1 if sharing Arduino reset pin)
+Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 //<--
 
 //--> dla oled 1.3 cala
-Adafruit_SH1106 display(21, 22);
+//Adafruit_SH1106 display(21, 22);
 //<--
 
 // OneButton button(SW1pin, true, 1);
@@ -122,7 +124,7 @@ boolean OTAActive = 0, FactorySet = 0, SettingSave = 0;
 String json;
 
 Sim800l Sim800l;     //to declare the library
-int serialmode = 0;  //0-wylaczony, 1-wlaczoy LOG, 2-wlaczony SIM
+int serialmode = 2;  //0-wylaczony, 1-wlaczoy LOG, 2-wlaczony SIM
 String SMSbuf = "";
 char incomingByte;
 bool gsminit = 0;
@@ -161,9 +163,10 @@ void setup() {
     DimUpDownResolution = eepromBUF[26];
     dimm2set_max = eepromBUF[27] * 256 + eepromBUF[28];
     dimm3set_max = eepromBUF[29] * 256 + eepromBUF[30];
+    RF24_rxAddr = eepromBUF[31];
 
     jasnosc_last = jasnosc;
-    dimmset_now = jasnosc;
+    //dimmset_now = jasnosc;
     dimmset_last = jasnosc;  // dla przycisku
 
     // konfikuracja poczatkowa przekaznika
@@ -220,6 +223,8 @@ void setup() {
         Serial.println(dimm3set_max);
         Serial.print("DimUpDownResolution: ");
         Serial.println(DimUpDownResolution);
+        Serial.print("RF24_rxAddr: ");
+        Serial.println(RF24_rxAddr);
     }
     //<-- EEPROM
     /*
@@ -285,11 +290,17 @@ void setup() {
     button.attachLongPressStop(LongPressStop);
 
     //--> dla oled 0.9 cala // Address 0x3D for 128x64
-    //if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { if(serialmode>0){Serial.println(F("SSD1306 allocation failed"));}for(;;);}
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        if (serialmode == 1) {
+            Serial.println(F("SSD1306 allocation failed"));
+        }
+        for (;;)
+            ;
+    }
     //<--
 
     //--> dla oled 1.3 cala
-    display.begin(SH1106_SWITCHCAPVCC, 0x3C);
+    //display.begin(SH1106_SWITCHCAPVCC, 0x3C);
     //<--
 
     //display.dim(1);// jasnosc wyswietlacza oled jesli 1 to przyciemnione
@@ -809,7 +820,7 @@ void readCAN() {
 
 void sendCAN(uint8_t toID, uint8_t fnID, uint32_t fndata, uint32_t fndata2) {
     // tworzenie ID RAMKI
-    //             | 8bit fnID  | 1bit Flag  | 4bit SubDevID  | 8bit DevID | 8bit toID |
+    //        | 8bit fnID  |   1bit Flag  | 4bit SubDevID    |  8bit DevID  | 8bit toID |
     frameID = (fnID << 21) + (Flag << 20) + (SubDevID << 16) + (DevID << 8) + toID;
 
     CAN_FRAME outFrame;
@@ -856,6 +867,7 @@ void konfiguracja() {
     allFrame = server.arg("allFrame").toInt();
     PALevel = server.arg("PALevel").toInt();
     NRFchannel = server.arg("NRFchannel").toInt();
+    RF24_rxAddr = server.arg("RF24_rxAddr").toInt();
     SW1TouchEnable = server.arg("SW1TouchEnable").toInt();
     OTAActive = server.arg("OTAActive").toInt();
     FactorySet = server.arg("FactorySet").toInt();
@@ -867,24 +879,20 @@ void konfiguracja() {
     serialmode = server.arg("serialmode").toInt();
     DimUpDownResolution = server.arg("DimUpDownResolution").toInt();
     SettingSave = server.arg("eeprom_save").toInt();
-
     jasnosc = server.arg("jasnosc1").toInt();
     dim1 = 1;
     jasnoscLED();
     dimmset_max = server.arg("dimmset_max").toInt();
-
     jasnosc2 = server.arg("jasnosc2").toInt();
     dim2 = 1;
     jasnoscLED();
     dimm2set_max = server.arg("dimm2set_max").toInt();
-
     jasnosc3 = server.arg("jasnosc3").toInt();
     dim3 = 1;
     jasnoscLED();
     dimm3set_max = server.arg("dimm3set_max").toInt();
 
     create_json();
-
     server.send(200, "application/json", json);
 }
 
@@ -996,6 +1004,7 @@ void zmiana_poziomu_jasnosci() {
             jasnosc = dimmset_now;
             dim1 = 1;  // dim2=0; dim3=0;
             jasnoscLED();
+            sendNRF(3, dimmset_now);  // dla NRF 3 to funkcja dimmera .. sendNRF(fnID,uint16_t fndata);
         }
         if (dimmset_now >= dimmset_max || dimmset_now <= dimmset_min) {
             dimming_up = !dimming_up;
@@ -1005,43 +1014,59 @@ void zmiana_poziomu_jasnosci() {
 
 void oneClick() {
     if (serialmode == 1) Serial.println("oneClick");
-    //if(dimmset_now==0 && dimmset_last==0) { dimmset_now=dimmset_max; dimmset_last=dimmset_now; jasnosc=dimmset_now; dim1=1; jasnoscLED(); } //  //pierwszy raz po reset
-    //else
-    if (dimmset_now == 0) {
+    //pierwszy raz po reset
+    if (dimmset_now == 0 && dimmset_last == 0) {
+        dimmset_now = dimmset_max;
+        dimmset_last = dimmset_now;
+        jasnosc = dimmset_now;
+        dim1 = 1;
+        jasnoscLED();
+        sendNRF(3, dimmset_now);
+    }
+    //wlaczamy na poprzedni poziom
+    else if (dimmset_now == 0) {
         dimmset_now = dimmset_last;
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-    }  //wlaczamy na poprzedni poziom
+        sendNRF(3, dimmset_now);
+    }
+    //wylaczamy
     else if (dimmset_now > 0 && dimmset_last <= dimmset_now) {
         dimmset_now = 0;
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-    }  //wylaczamy
+        sendNRF(3, dimmset_now);
+    }
 }
-
 void DoubleClick() {
     if (serialmode == 1) Serial.println("DoubleClick");
+    //wlaczamy na MAX
     if (dimmset_now > 0 && dimmset_last < (dimmset_max + 1) && dimmset_now < (dimmset_max + 1)) {
         dimmset_last = dimmset_now;
         dimmset_now = (dimmset_max + 1);
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-    }  //wlaczamy na MAX
+        sendNRF(3, dimmset_now);
+    }
+    //wlaczamy na poprzedni poziom
     else if (dimmset_now == (dimmset_max + 1) && dimmset_last != (dimmset_max + 1)) {
         dimmset_now = dimmset_last;
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-    }  //wlaczamy na poprzedni poziom
+        sendNRF(3, dimmset_now);
+    }
+    //na MAX z wylaczonego
     else if (dimmset_now == 0) {
         dimmset_now = (dimmset_max + 1);
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-    }  //na MAX z wylaczonego
+        sendNRF(3, dimmset_now);
+    }
 }
 
 void LongPressStart() {
@@ -1152,7 +1177,8 @@ void writeEEPROM(unsigned int adres, uint16_t dane, uint8_t dlugosc) {
 }
 void SettingWriteEEPROM() {
     if (serialmode == 1) Serial.print("Zapisywanie ustawien...");
-
+    delay(6);
+    writeEEPROM(31, RF24_rxAddr, 1);
     delay(6);
     writeEEPROM(29, dimm3set_max, 2);  // 29,30 BAJT dimm3set_max MSB
     delay(6);
@@ -1262,11 +1288,12 @@ byte readEEPROM(unsigned int eeaddress) {
 }
 
 void rysuj_jasnosc_na_lcd() {
-    if (jasnosc >= dimmset_max) {
+    /*if (jasnosc >= dimmset_max) {
         dimmset_now = dimmset_max;
     } else {
         dimmset_now = jasnosc;
-    }
+    }*/
+    dimmset_now = jasnosc;
 
     int val = map(dimmset_now, 0, dimmset_max, 0, 95);
     if (val < 1 && dimmset_now > 0) {
@@ -1513,6 +1540,12 @@ void readSMS() {
         if (SMSbuf.indexOf("@SERVERONOFF") > -1) {
             ServerActive = !ServerActive;
             writeEEPROM(17, ServerActive, 1);
+            if (ServerActive == 0) {
+                WiFi.disconnect(true);
+                WiFi.mode(WIFI_OFF);
+                //WiFi.forceSleepBegin();
+                delay(100);
+            }
             ESP.restart();
         }
         rysujemy_na_lcd();  // wyswietl SMS na OLED
@@ -1540,9 +1573,9 @@ void serverON() {
 // załączenie przekaznika fizycznego i wirtualnego. 1 i 2 to fizyczne wyjscie
 void relays(uint8_t n) {
     sp[n - 1] = !sp[n - 1];
-    if (n >= 2) {
+    if (n <= 2) {
         digitalWrite(relay, sp[n - 1]);
-        Sim800l.sendSms(getsmstel(), String(sp[n - 1]));
+        //Sim800l.sendSms(getsmstel(), String(sp[n - 1]));
     } else {  // NIE TESTOWANE
         uint16_t data = (n << 8) + sp[n - 1];
         sendNRF(6, data);
