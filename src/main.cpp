@@ -165,7 +165,6 @@ void setup() {
     dimm3set_max = eepromBUF[29] * 256 + eepromBUF[30];
     RF24_rxAddr = eepromBUF[31];
 
-    jasnosc_last = jasnosc;
     //dimmset_now = jasnosc;
     dimmset_last = jasnosc;  // dla przycisku
 
@@ -880,6 +879,7 @@ void konfiguracja() {
     DimUpDownResolution = server.arg("DimUpDownResolution").toInt();
     SettingSave = server.arg("eeprom_save").toInt();
     jasnosc = server.arg("jasnosc1").toInt();
+    dimmset_now = jasnosc;
     dim1 = 1;
     jasnoscLED();
     dimmset_max = server.arg("dimmset_max").toInt();
@@ -906,31 +906,30 @@ void index_html() {
 void css_css() {
 }
 void create_json() {
-    json =
-        "[{\"DevID\":" + String(DevID) +
-        ",\"SubDevID\":" + String(SubDevID) +
-        ",\"Flag\":" + String(Flag) +
-        ",\"allFrame\":" + String(allFrame) +
-        ",\"PALevel\":" + String(PALevel) +
-        ",\"NRFchannel\":" + String(NRFchannel) +
-        ",\"SW1TouchEnable\":" + String(SW1TouchEnable) +
-        ",\"OTAActive\":" + String(OTAActive) +
-        ",\"ServerActive\":" + String(ServerActive) +
-        ",\"ResolutionLED\":" + String(ResolutionLED) +
-        ",\"FreqLED\":" + String(FreqLED) +
-        ",\"czasnazapisweeprom\":" + String(czasnazapisweeprom) +
-        ",\"LightOnBoot\":" + String(LightOnBoot) +
-        ",\"serialmode\":" + String(serialmode) +
-        ",\"frameID\":" + String(frameID) +
-        ",\"celsius\":" + String(celsius) +
-        ",\"jasnosc1\":" + String(jasnosc) +
-        ",\"jasnosc2\":" + String(jasnosc2) +
-        ",\"jasnosc3\":" + String(jasnosc3) +
-        ",\"dimmset_max\":" + String(dimmset_max) +
-        ",\"dimm2set_max\":" + String(dimm2set_max) +
-        ",\"dimm3set_max\":" + String(dimm3set_max) +
-        ",\"DimUpDownResolution\":" + String(DimUpDownResolution) +
-        "}]";
+    json = "[{\"DevID\":" + String(DevID) +
+           ",\"SubDevID\":" + String(SubDevID) +
+           ",\"Flag\":" + String(Flag) +
+           ",\"allFrame\":" + String(allFrame) +
+           ",\"PALevel\":" + String(PALevel) +
+           ",\"NRFchannel\":" + String(NRFchannel) +
+           ",\"SW1TouchEnable\":" + String(SW1TouchEnable) +
+           ",\"OTAActive\":" + String(OTAActive) +
+           ",\"ServerActive\":" + String(ServerActive) +
+           ",\"ResolutionLED\":" + String(ResolutionLED) +
+           ",\"FreqLED\":" + String(FreqLED) +
+           ",\"czasnazapisweeprom\":" + String(czasnazapisweeprom) +
+           ",\"LightOnBoot\":" + String(LightOnBoot) +
+           ",\"serialmode\":" + String(serialmode) +
+           ",\"jasnosc1\":" + String(jasnosc) +
+           ",\"jasnosc2\":" + String(jasnosc2) +
+           ",\"jasnosc3\":" + String(jasnosc3) +
+           ",\"dimmset_max\":" + String(dimmset_max) +
+           ",\"dimm2set_max\":" + String(dimm2set_max) +
+           ",\"dimm3set_max\":" + String(dimm3set_max) +
+           ",\"DimUpDownResolution\":" + String(DimUpDownResolution) +
+           ",\"RF24_rxAddr\":" + String(RF24_rxAddr) +
+           "},{\"frameID\":" + String(frameID) +
+           ",\"celsius\":" + String(celsius) + "}]";
 }
 
 void handleRoot() {  // When URI / is requested, send a web page with a button
@@ -1004,7 +1003,7 @@ void zmiana_poziomu_jasnosci() {
             jasnosc = dimmset_now;
             dim1 = 1;  // dim2=0; dim3=0;
             jasnoscLED();
-            sendNRF(3, dimmset_now);  // dla NRF 3 to funkcja dimmera .. sendNRF(fnID,uint16_t fndata);
+            //sendNRF(3, dimmset_now);  // dla NRF 3 to funkcja dimmera .. sendNRF(fnID,uint16_t fndata);
         }
         if (dimmset_now >= dimmset_max || dimmset_now <= dimmset_min) {
             dimming_up = !dimming_up;
@@ -1021,7 +1020,7 @@ void oneClick() {
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-        sendNRF(3, dimmset_now);
+        //sendNRF(3, dimmset_now);
     }
     //wlaczamy na poprzedni poziom
     else if (dimmset_now == 0) {
@@ -1029,7 +1028,7 @@ void oneClick() {
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-        sendNRF(3, dimmset_now);
+        //sendNRF(3, dimmset_now);
     }
     //wylaczamy
     else if (dimmset_now > 0 && dimmset_last <= dimmset_now) {
@@ -1037,7 +1036,7 @@ void oneClick() {
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-        sendNRF(3, dimmset_now);
+        //sendNRF(3, dimmset_now);
     }
 }
 void DoubleClick() {
@@ -1049,7 +1048,7 @@ void DoubleClick() {
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-        sendNRF(3, dimmset_now);
+        //sendNRF(3, dimmset_now);
     }
     //wlaczamy na poprzedni poziom
     else if (dimmset_now == (dimmset_max + 1) && dimmset_last != (dimmset_max + 1)) {
@@ -1057,7 +1056,7 @@ void DoubleClick() {
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-        sendNRF(3, dimmset_now);
+        //sendNRF(3, dimmset_now);
     }
     //na MAX z wylaczonego
     else if (dimmset_now == 0) {
@@ -1065,7 +1064,7 @@ void DoubleClick() {
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-        sendNRF(3, dimmset_now);
+        //sendNRF(3, dimmset_now);
     }
 }
 
@@ -1083,6 +1082,7 @@ void jasnoscLED() {
     uint16_t TMPjasnosc = 0, TMPjasnosc2 = 0, TMPjasnosc3 = 0;
 
     if (dim1 == 1) {
+        sendNRF(3, dimmset_now);
         //led[0].setupMax(jasnosc1);
         eepromBUF[0] = readEEPROM(0);
         eepromBUF[1] = readEEPROM(1);
@@ -1293,7 +1293,6 @@ void rysuj_jasnosc_na_lcd() {
     } else {
         dimmset_now = jasnosc;
     }*/
-    dimmset_now = jasnosc;
 
     int val = map(dimmset_now, 0, dimmset_max, 0, 95);
     if (val < 1 && dimmset_now > 0) {
