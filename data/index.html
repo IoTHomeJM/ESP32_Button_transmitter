@@ -11992,9 +11992,9 @@
                                 </span>
                             </div>
                             <div class="contact-form__input-group">
-                                <label class="contact-form__label" for="36">Adres (1-254):</label></br>
+                                <label class="contact-form__label" for="36">Adres tego urzadzenia (1-255):</label></br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="36" name="RF24_rxAddr" type="number" min="1" max="254" value="1" />
+                                    <input class="contact-form__input contact-form__input--text" id="36" name="RF24_rxAddr" type="number" min="1" max="255" value="1" />
                                 </span>
                             </div>
 
@@ -12004,7 +12004,19 @@
                     <div class="col-md-6 col-lg-6">
                         <h3 class="text-center text-uppercase text-white mb-0">INNE:</h2>
 
+                            <div class="contact-form__input-group">
+                                <label class="contact-form__label" for="37">Opoznienie wyl. przekaznika 1 (w S, 0-wyl):</label></br>
+                                <span class="p-4">
+                                    <input class="contact-form__input contact-form__input--text" id="37" name="relayToff1" type="number" min="0" max="65535" value="0" />
+                                </span>
+                            </div>
 
+                            <div class="contact-form__input-group">
+                                <label class="contact-form__label" for="38">Opoznienie wyl. przekaznika 2 (w S, 0-wyl):</label></br>
+                                <span class="p-4">
+                                    <input class="contact-form__input contact-form__input--text" id="38" name="relayToff2" type="number" min="0" max="65535" value="0" />
+                                </span>
+                            </div>
 
                             <div class="contact-form__input-group">
                                 <label class="contact-form__label">Aktywacja dotyku:</label>
@@ -12016,7 +12028,7 @@
                                 <input class="contact-form__input contact-form__input--radio" id="6" name="SW1TouchEnable" type="radio" value="0" />
                             </div>
                             <div class="contact-form__input-group">
-                                <label class="contact-form__label">Aktywacja OTA:</label>
+                                <label class="contact-form__label">Aktywacja OTA-WIFI:</label>
                                 </br><span class="p-4">
                                     <label class="contact-form__label contact-form__label--radio" for="7">TAK</label>
                                     <input class="contact-form__input contact-form__input--radio" id="7" name="OTAActive" type="radio" value="1" />
@@ -12052,7 +12064,7 @@
                                 <input class="contact-form__input contact-form__input--radio" id="10" name="FactorySet" type="radio" value="0" checked="true" />
                             </div>
                             <div class="contact-form__input-group">
-                                <label class="contact-form__label">Aktywacja serwera:</label>
+                                <label class="contact-form__label">Aktywacja serwera-WIFI:</label>
                                 </br><span class="p-4">
                                     <label class="contact-form__label contact-form__label--radio" for="3">TAK</label>
                                     <input class="contact-form__input contact-form__input--radio" id="3" name="ServerActive" type="radio" value="1" />
@@ -12060,8 +12072,14 @@
                                 <label class="contact-form__label contact-form__label--radio" for="4">NIE</label>
                                 <input class="contact-form__input contact-form__input--radio" id="4" name="ServerActive" type="radio" value="0" />
                             </div>
-
-
+                            <div class="contact-form__input-group">
+                                <label class="contact-form__label">SSID:</label>
+                                <input class="contact-form__input contact-form__input--text" id="39" name="SSID" type="text" value="" />
+                            </div>
+                            <div class="contact-form__input-group">
+                                <label class="contact-form__label">Haslo:</label>
+                                <input class="contact-form__input contact-form__input--text" id="40" name="pass" type="text" value="" />
+                            </div>
                     </div>
                     <div class="col-md-6 col-lg-6">
                         <h3 class="text-center text-uppercase text-white mb-0">ŚWIATŁO</h2>
@@ -12091,8 +12109,8 @@
                                 </span>
                             </div>
                             <div class="contact-form__input-group">
-                                <label class="contact-form__label" for="28">Jasnosc1</label>
-                                <span class="float-sm-right"><label class="contact-form__label" for="29">dimmset_max</label></span></br>
+                                <label class="contact-form__label" for="28" title="Ustawienie ostatnio zapamietanej jasnosci do eeprom">Jasnosc1</label>
+                                <span class="float-sm-right"><label class="contact-form__label" for="29" title="Ustawia maksymalna wartosc rozjasniania.">dimmset_max</label></span></br>
                                 <span class="p-4">
                                     <input class="contact-form__input contact-form__input--text" id="28" name="jasnosc1" type="number" min="0" max="1023" value="0" />
                                 </span>
@@ -12102,8 +12120,8 @@
                             </div>
 
                             <div class="contact-form__input-group">
-                                <label class="contact-form__label" for="30">Jasnosc2</label>
-                                <span class="float-sm-right"><label class="contact-form__label" for="33">dimm2set_max</label></span></br>
+                                <label class="contact-form__label" for="30" title="Ustawienie ostatnio zapamietanej jasnosci do eeprom">Jasnosc2</label>
+                                <span class="float-sm-right"><label class="contact-form__label" for="33" title="Ustawia maksymalna wartosc rozjasniania.">dimm2set_max</label></span></br>
                                 <span class="p-4">
                                     <input class="contact-form__input contact-form__input--text" id="30" name="jasnosc2" type="number" min="0" max="1023" value="0" />
                                 </span>
@@ -12113,8 +12131,8 @@
                             </div>
 
                             <div class="contact-form__input-group">
-                                <label class="contact-form__label" for="31">Jasnosc3</label>
-                                <span class="float-sm-right"><label class="contact-form__label" for="34">dimm3set_max</label></span></br>
+                                <label class="contact-form__label" for="31" title="Ustawienie ostatnio zapamietanej jasnosci do eeprom">Jasnosc3</label>
+                                <span class="float-sm-right"><label class="contact-form__label" for="34" title="Ustawia maksymalna wartosc rozjasniania.">dimm3set_max</label></span></br>
                                 <span class="p-4">
                                     <input class="contact-form__input contact-form__input--text" id="31" name="jasnosc3" type="number" min="0" max="1023" value="0" />
                                 </span>
@@ -12173,7 +12191,7 @@
     <script type="text/javascript">
         var frm = $('#contactForm1');
         var frm2 = $('.frajaxbtn');
-        var server = 'http://192.168.1.100/';
+        var server = '';
         frm.submit(function (e) {
             e.preventDefault();
             frm2.addClass('loading');
@@ -12201,11 +12219,11 @@
         // function loadData() {}
         $(document).ready(function () {
             $.ajax({
-                url: 'http://192.168.1.100/after_loading',
+                url: 'after_loading',
                 dataType: 'json'
             })
                 .done((res) => {
-                    //JSON.stringify(res[0].aktywna)
+
                     $("#14").val(JSON.stringify(res[0].DevID));
                     $("#15").val(JSON.stringify(res[0].SubDevID));
                     $("#16").val(JSON.stringify(res[0].Flag));
@@ -12268,6 +12286,18 @@
                     $("#34").val(JSON.stringify(res[0].dimm3set_max));
                     $("#36").val(JSON.stringify(res[0].RF24_rxAddr));
                     $("#32").val(JSON.stringify(res[0].DimUpDownResolution));
+                    $("#37").val(JSON.stringify(res[0].relayToff1));
+                    $("#38").val(JSON.stringify(res[0].relayToff2));
+
+                    // const SSID = JSON.stringify(res[0].SSID);
+                    // const unquotedSSID = SSID.replaceAll("\"", "");
+                    // $("#39").val(unquotedSSID);
+
+                    // const pass = JSON.stringify(res[0].pass);
+                    // const unquotedpass = pass.replaceAll("\"", "");
+                    // $("#40").val(unquotedpass);
+                    $("#39").val(JSON.stringify(res[0].SSID).replaceAll("\"", ""));
+                    $("#40").val(JSON.stringify(res[0].pass).replaceAll("\"", ""));
                     //$("#").val(JSON.stringify(res[0].frameID));
                     //$("#").val(JSON.stringify(res[0].celsius));
 
@@ -12284,6 +12314,49 @@
                     //$('.user-list').removeClass('loading');        
                 });
         });
+
+        const res2 = [
+            {
+                "DevID": 2,
+                "SubDevID": 0,
+                "Flag": 0,
+                "allFrame": 1,
+                "PALevel": 0,
+                "NRFchannel": 1,
+                "SW1TouchEnable": 0,
+                "OTAActive": 0,
+                "ServerActive": 1,
+                "ResolutionLED": 10,
+                "FreqLED": 25000,
+                "czasnazapisweeprom": 6000,
+                "LightOnBoot": 0,
+                "serialmode": 1,
+                "jasnosc1": 200,
+                "jasnosc2": 80,
+                "jasnosc3": 90,
+                "dimmset_max": 293,
+                "dimm2set_max": 300,
+                "dimm3set_max": 300,
+                "DimUpDownResolution": 20,
+                "RF24_rxAddr": 2,
+                "relayToff1": 5,
+                "relayToff2": 0,
+                "SSID": "JLU",
+                "pass": "1234567890"
+            },
+            {
+                "frameID": 0,
+                "celsius": -99
+            }
+        ];
+        // const SSID = JSON.stringify(res2[0].SSID);
+        // const unquotedSSID = SSID.replaceAll("\"", "");
+        // $("#39").val(unquotedSSID);
+
+        // const pass = JSON.stringify(res2[0].pass);
+        // const unquotedpass = pass.replaceAll("\"", "");
+        // $("#40").val(unquotedpass);
+
 
     </script>
 </body>

@@ -32,13 +32,15 @@ uint16_t ResolutionLED = 10;  // Rozdzielczosc w bitach.
 
 // zmiennych ponizej nie edytujemy
 unsigned int jasnosc = 0, jasnosc2 = 0, jasnosc3 = 0;
-unsigned int jasnosc_last = 0;
-unsigned int jasnosc_max = 0;
-byte eepromBUF[32];  // bufor dla zapisu/odczytu eeprom
+unsigned int jasnosc_last = 0;  // !! chyba nigdzie nie jest wykorzystywane
+unsigned int jasnosc_max = 0;   // !! chyba nigdzie nie jest wykorzystywane
+byte eepromBUF[64];             // bufor dla zapisu/odczytu eeprom
 bool zapiszweeprom = 0;
 uint64_t aktualnyCzas = 0;
 uint64_t zapamietanyCzas1 = 0;
 uint64_t zapamietanyCzasEEPROM = 0;
+uint64_t zapamietanyCzasOLED = 0;
+uint64_t zapczas = 0, zapczas2 = 0;  // dla relaydimonoff();
 
 // LightDimmerESP32 DimLED1;
 LightDimmerESP32 led[3];
@@ -46,8 +48,8 @@ bool dim1 = 0, dim2 = 0, dim3 = 0, LightOnBoot = 0;
 uint8_t DimUpDownResolution = 20;  // szybkosc regulacji jasnosci led za pomoca przycisku
 
 // dla przycisku, regulacja jasnosci
-int16_t dimmset_now = 0;
-int16_t dimmset_last = 0;
+int16_t dimmset_now = 0, dimmset_now2 = 0, dimmset_now3 = 0;
+int16_t dimmset_last = 0, dimmset_last2 = 0, dimmset_last3 = 0;
 int16_t dimmset_min = 2;
 int16_t dimmset_max = 999, dimm2set_max = 999, dimm3set_max = 999;
 
@@ -55,15 +57,25 @@ int16_t dimmset_max = 999, dimm2set_max = 999, dimm3set_max = 999;
 //--> server
 boolean ServerActive = 1;
 
-char* ssid = "SWModule";        // Enter SSID here
-char* password = "1234567890";  // Enter Password here
+char* ssidAP = strdup("SWModule");        // Enter SSID here
+char* passwordAP = strdup("1234567890");  // Enter Password here
+// char* ssid = strdup("NET2");
+// char* password = strdup("Janek1Ewa2-s7");
+// char* ssid = strdup("JLU");
+//char* password = strdup("1234567890");
+char* ssid = strdup("NET");
+char* password = strdup("Janek1@$Eva");
+
+String hostname = "SWModule";
 WebServer server(80);
+bool wifiSTAon = 0, WIFIconfigured = 0;
+uint8_t wifiSTAonCN = 0;
 //<--server
 
 //--> CAN-BUS
 
 uint8_t Flag = 0;      // 1 bit
-uint8_t SubDevID = 0;  // 4 bity od 0 do 15
+uint8_t SubDevID = 0;  // 4 bity od 0 do 15. wykorzystywane np po to aby zazadzac drugim modulem po CAN z tym zamym DevID
 uint8_t DevID = 2;     // 8bit ID tego urzadzenia, ID 1 to master.
 uint32_t frameID = 0;
 bool allFrame = 0;         // jesli 0 to przyjmuje ramki z filtrem
@@ -80,8 +92,7 @@ const uint8_t SW1TouchPin = 33;
 
 //--> NRF settings
 byte NRFbuf[32] = {0};  // bufor dla nrf
-//byte RF24_rxAddr[6] = "00001";
-uint8_t RF24_rxAddr = 1;
+uint32_t RF24_rxAddr = 2138439680;
 uint8_t NRFchannel = 1;
 uint8_t PALevel = 1;             // 0=MIN, 1=LOW, 2=HIGH, 3=MAX
 RF24 radio(27, 15, 14, 12, 13);  //JLU //CE CSN SCK MISO MOSI // ta trzeba uzywac do ESP32 https://github.com/nhatuan84/RF24
@@ -125,21 +136,26 @@ String json;
 
 Sim800l Sim800l;     //to declare the library
 int serialmode = 2;  //0-wylaczony, 1-wlaczoy LOG, 2-wlaczony SIM
-String SMSbuf = "";
-char incomingByte;
-bool gsminit = 0;
+String SMSbuf = "";  // bufor SMS
+char incomingByte;   // zaciaganie bitow z seriala
+bool gsminit = 0, GSMmsg = 0;
+uint16_t smsoled = 5000;  // czas wyswietlania sms na OLED
 
 int drvsimreset = 33;
 bool oleddim = 0;
 
-int relay = 25, relay1 = 26;
-bool sp[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};  // status przekaznikow
+int relay[2] = {25, 26};                       // piny fizyczne
+bool sp[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};  // status przekaznikow sp[0],sp[1] - fizyczne
+uint16_t relayToff1 = 5;                       // czas opoznienia wylaczenia przekaznika1 w sekundach
+uint16_t relayToff2 = 5;
+bool roff = 1;
 
+int timerid1, timerid2;
 void setup() {
     //--> EEPROM
     Wire.begin(21, 22);  // sda, scl
     Wire.setClock(4000000);
-    for (int i = 0; i < 32; ++i) {
+    for (int i = 0; i < 64; ++i) {
         eepromBUF[i] = readEEPROM(i);
     }  // read 32 byte eeprom
     jasnosc = eepromBUF[0] * 256 + eepromBUF[1];
@@ -163,17 +179,23 @@ void setup() {
     DimUpDownResolution = eepromBUF[26];
     dimm2set_max = eepromBUF[27] * 256 + eepromBUF[28];
     dimm3set_max = eepromBUF[29] * 256 + eepromBUF[30];
-    RF24_rxAddr = eepromBUF[31];
+    RF24_rxAddr = (127 << 24) + (118 << 16) + (eepromBUF[31] << 8) + 0;
+    relayToff1 = eepromBUF[32] * 256 + eepromBUF[33];
+    relayToff2 = eepromBUF[34] * 256 + eepromBUF[35];
+
+    strcpy(ssid, readStringFromEEPROM(2000).c_str());
+    strcpy(password, readStringFromEEPROM(2033).c_str());
 
     //dimmset_now = jasnosc;
-    dimmset_last = jasnosc;  // dla przycisku
-
+    dimmset_last = jasnosc;
+    dimmset_last2 = jasnosc2;
+    dimmset_last3 = jasnosc3;
     // konfikuracja poczatkowa przekaznika
-    pinMode(relay, OUTPUT);
-    pinMode(relay1, OUTPUT);
-    digitalWrite(relay, sp[0]);
-    digitalWrite(relay1, sp[1]);
-
+    pinMode(relay[0], OUTPUT);
+    pinMode(relay[1], OUTPUT);
+    digitalWrite(relay[0], sp[0]);
+    digitalWrite(relay[1], sp[1]);
+    // serialmode = 1;  // !!
     if (serialmode == 1) {
         Serial.begin(115200);      // dla serial monitro
     } else if (serialmode == 2) {  //dla SIM
@@ -222,8 +244,20 @@ void setup() {
         Serial.println(dimm3set_max);
         Serial.print("DimUpDownResolution: ");
         Serial.println(DimUpDownResolution);
-        Serial.print("RF24_rxAddr: ");
+        Serial.print("Pelny RF24_rxAddr: ");
         Serial.println(RF24_rxAddr);
+        Serial.print("RF24_rxAddr: ");
+        Serial.println((RF24_rxAddr >> 8) & 255);
+        Serial.print("dimmset_now: ");
+        Serial.println(dimmset_now);
+        Serial.print("dimmset_now2: ");
+        Serial.println(dimmset_now2);
+        Serial.print("dimmset_now3: ");
+        Serial.println(dimmset_now3);
+        Serial.print("ssi: ");
+        Serial.println(ssid);
+        Serial.print("password: ");
+        Serial.println(password);
     }
     //<-- EEPROM
     /*
@@ -289,6 +323,7 @@ void setup() {
     button.attachLongPressStop(LongPressStop);
 
     //--> dla oled 0.9 cala // Address 0x3D for 128x64
+
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         if (serialmode == 1) {
             Serial.println(F("SSD1306 allocation failed"));
@@ -315,7 +350,7 @@ void setup() {
     radio.setPALevel(PALevel);
     radio.setDataRate(RF24_250KBPS);
     radio.setRetries(15, 15);
-    radio.openWritingPipe(RF24_rxAddr);
+    radio.openWritingPipe(RF24_rxAddr + 1);  // !!
     radio.openReadingPipe(1, RF24_rxAddr);
     radio.startListening();
     if (serialmode == 1) radio.printDetails();  // wyswietlamy info o parametrach NRF
@@ -331,63 +366,6 @@ void setup() {
     if (DallasAddr[0] != 0x28) {
         CzyJestCzujnikTemperaury = 0;
     }
-
-    //// TIMERY ////
-    ///////////////
-
-    timer.setInterval(2000, InicjacjaOdczytTemperatury);
-
-    timer.setInterval(1000, rysujemy_na_lcd);
-
-    if (ServerActive == 1) {
-        timer.setInterval(1500, serverON);
-    }
-    if (gsminit == 1) {
-        timer.setInterval(500, readSMS);
-    }
-
-    if (SW1TouchEnable) {
-        timer.setTimer(100, InicjacjaSW1Touch, 10);
-        touch_pad_init();
-        touch_pad_set_fsm_mode(TOUCH_FSM_MODE_TIMER);
-        touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
-    }
-
-    if (!SPIFFS.begin(true)) {
-        Serial.println("SPIFFS init error");
-        return;
-    }  // inicjowanie systemu plikow SPI
-
-    // setTime(1586365689); // ustawia zegarek
-
-    //--> server www
-    if (ServerActive == 1) {
-        WIFI_APSTART();
-        server.on("/headers", []() {  // wysyla naglowki
-            server.sendHeader("Access-Control-Allow-Origin", "*");
-            server.sendHeader("access-control-allow-credentials", "true");
-            server.sendHeader("access-control-allow-headers", "x-requested-with");
-            server.sendHeader("access-control-allow-methods", "GET,OPTIONS");
-            server.send(200, "text/plain", "OK");
-        });
-        server.on("/after_loading", []() { server.send(200, "application/json", json); });
-        server.on("/favicon.ico", []() { server.send(200, "text/plain", "OK"); });
-        server.on("/config", HTTP_POST, konfiguracja);
-        server.on("/", index_html);
-        server.on("/index.html", index_html);
-
-        server.on("/tst", HTTP_GET, handleRoot);      // Call the 'handleRoot' function when a client requests URI "/"
-        server.on("/login", HTTP_POST, handleLogin);  // Call the 'handleLogin' function when a POST request is made to URI "/login"
-
-        server.onNotFound(handle_NotFound);
-        server.begin();
-        if (serialmode == 1) Serial.println("HTTP server started");
-    }
-    //<-- server
-
-    if (LightOnBoot == 0) {
-        sendNRF(0, 0);
-    }  // NRF wysyla gotowosc do odbioru danych
 
     if (serialmode == 2) {
         int cz = 0;
@@ -411,14 +389,79 @@ void setup() {
             SMSbuf = "";
             Serial.println("AT+CNMI=1,2,0,0,0");  //Procedura obsługi nowo przybyłych wiadomości
             delay(1000);
+
             rysujemy_na_lcd();
             //Serial.println("AT+CMGL=\"REC UNREAD\"");  // Czytaj Nieprzeczytane wiadomości
         } else {
             SMSbuf = "Nie wykryto GSM";
         }
+
         rysujemy_na_lcd();
     } else {
         SMSbuf = "GSM wylaczony";
+        rysujemy_na_lcd();
+    }
+
+    if (!SPIFFS.begin(true)) {
+        Serial.println("SPIFFS init error");
+        return;
+    }  // inicjowanie systemu plikow SPI
+
+    // setTime(1586365689); // ustawia zegarek
+
+    //--> server www
+    if (ServerActive == 1) {
+        // wifiapstart();
+        wifiSTAstart();
+        server.on("/headers", []() {  // wysyla naglowki
+            server.sendHeader("Access-Control-Allow-Origin", "*");
+            server.sendHeader("access-control-allow-credentials", "true");
+            server.sendHeader("access-control-allow-headers", "x-requested-with");
+            server.sendHeader("access-control-allow-methods", "GET,OPTIONS");
+            server.send(200, "text/plain", "OK");
+        });
+        server.on("/after_loading", []() { create_json(); server.send(200, "application/json", json); });
+        server.on("/favicon.ico", []() { server.send(200, "text/plain", "OK"); });
+        server.on("/config", HTTP_POST, konfiguracja);
+        server.on("/", index_html);
+        server.on("/index.html", index_html);
+        server.on("/tst", HTTP_GET, handleRoot);      // Call the 'handleRoot' function when a client requests URI "/"
+        server.on("/login", HTTP_POST, handleLogin);  // Call the 'handleLogin' function when a POST request is made to URI "/login"
+
+        server.onNotFound(handle_NotFound);
+        // delay(2000);  // !!
+        // server.begin();  // !! powinno byc po polaczeniu wifi?
+        // if (serialmode == 1) Serial.println("HTTP server started");
+        // !!
+        // if (strcmp(ssid, "ssid") != 0) {
+        //     WIFIconfigured = 1;
+        // }
+        // if (serialmode == 1) {
+        //     Serial.print("WIFIconfigured: ");
+        //     Serial.println(WIFIconfigured);
+        // }
+    }
+    //<-- server
+
+    //// TIMERY ////
+    ///////////////
+
+    timer.setInterval(1000, rysujemy_na_lcd);
+    timer.setInterval(2000, InicjacjaOdczytTemperatury);
+    if (ServerActive == 1) {
+        timerid1 = timer.setInterval(300000, wifiSTAcheck);  // co 5min 300000
+        timer.setInterval(1500, serverON);
+        timerid2 = timer.setTimer(6000, wifiSTAcheck, 5);
+    }
+    if (gsminit == 1) {
+        timer.setInterval(500, readSMS);
+    }
+
+    if (SW1TouchEnable) {
+        timer.setTimer(100, InicjacjaSW1Touch, 10);
+        touch_pad_init();
+        touch_pad_set_fsm_mode(TOUCH_FSM_MODE_TIMER);
+        touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
     }
 }
 ////////////////////////////
@@ -431,7 +474,10 @@ void loop() {
     LightDimmerESP32::update();
     readCAN();
     readNRF();
-    readSMS();
+    relaydimonoff();
+    if (button_is_long_pressed == 1) {
+        zmiana_poziomu_jasnosci();
+    }
 
     if (SW1TouchActive == 1) {
         sprawdzSW1Touch();
@@ -441,9 +487,7 @@ void loop() {
     } else {
         button.tick();
     }
-    if (button_is_long_pressed == 1) {
-        zmiana_poziomu_jasnosci();
-    }
+
     if (OTAActive == 1) {
         ArduinoOTA.handle();
     }
@@ -456,30 +500,27 @@ void loop() {
     if (zapiszweeprom == 1) {
         DimmWriteEEPROM();
     }  // zapisywanie z opoznieniem aktualnej nastawy jasnosci LED do EEPROM
+    // wifiSTAcheck();
 }
 ////////////////////////////
 // KONIEC LOOP ////////////////////
 ////////////////////////////
 
 void EnableOTA() {
-    //const char* ssid = "W050"; const char* password = "sfdkjJd93Jan3";
-    const char* ssid = "loc003";
-    const char* password = "tylkojak";
-
     // ustawienie MAC Address musi byc przed podlaczeniem do WiFi
     // uint8_t NEW_MACAddress[6] = {0x82,0x01,0x01,0x01,0x01,0x01}; //zostaw w pierwszym 82, sa rezerwacje na pewne nr np. 01...
     // esp_base_mac_addr_set(NEW_MACAddress); //Serial.print("ESP Board MAC Address: "); Serial.println(WiFi.macAddress());
 
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
+    // WiFi.mode(WIFI_STA);
+    // WiFi.begin(ssid, password);
 
-    while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-        Serial.println("Connection Failed! Rebooting...");
-        delay(5000);
-        ESP.restart();
-    }
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
+    // while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    //     Serial.println("Connection Failed! Rebooting...");
+    //     delay(5000);
+    //     ESP.restart();
+    // }
+    // Serial.print("IP address: ");
+    // Serial.println(WiFi.localIP());
     ArduinoOTA.begin();
 }
 
@@ -708,7 +749,7 @@ void readCAN() {
                 dim3 = 1;
                 jasnoscLED();
                 break;
-            case 6:  // NIE TESTOWANE
+            case 6:  // wszystkie !! NIE TESTOWANE
                 jasnosc = inFrame.data.uint16[0];
                 dim1 = 1;
                 jasnosc2 = inFrame.data.uint16[1];
@@ -845,11 +886,22 @@ void sendCAN(uint8_t toID, uint8_t fnID, uint32_t fndata, uint32_t fndata2) {
 
 //<-- CAN-BUS
 //--> server
-void WIFI_APSTART() {
+
+void wificlose() {
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
+    delay(100);
+    ESP.restart();
+}
+void wifiapstart() {
+    if (serialmode == 1) {
+        Serial.println("Laczenie wifi AP");
+    }
+    timer.disable(timerid1);
     WiFi.persistent(false);
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
-    WiFi.mode(WIFI_STA);
+    //WiFi.mode(WIFI_STA);
     delay(100);
 
     IPAddress local_ip(192, 168, 1, 100);
@@ -857,8 +909,60 @@ void WIFI_APSTART() {
     IPAddress subnet(255, 255, 255, 0);
 
     WiFi.softAPConfig(local_ip, gateway, subnet);
-    WiFi.softAP(ssid, password);
+    WiFi.softAP(ssidAP, passwordAP);
+    server.begin();
+    zapamietanyCzasOLED = aktualnyCzas;
+    SMSbuf = "APmode : 192.168.1.100";
 }
+void wifiSTAstart() {
+    WiFi.persistent(false);
+    WiFi.disconnect();
+    WiFi.mode(WIFI_OFF);
+    delay(100);
+    WiFi.mode(WIFI_STA);
+    hostname += String(DevID);
+    WiFi.setHostname(hostname.c_str());
+    WiFi.begin(ssid, password);
+
+    if ((wifiSTAonCN >= 5) && (WIFIconfigured == 0)) {
+        if (serialmode == 1) {
+            Serial.println("brak polaczenia STA mode");
+        }
+        wifiSTAonCN = 0;
+        wifiapstart();
+    }
+}
+void wifiSTAcheck() {
+    if (WiFi.status() != WL_CONNECTED) {
+        wifiSTAonCN++;
+        if (serialmode == 1) {
+            Serial.print("Laczenie do WIFI - STA mode. ");
+            Serial.println(" Ilosc prob: " + String(wifiSTAonCN) + "");
+        }
+        if (wifiSTAon == 1) {
+            timer.enable(timerid2);  // wifiSTAcheck
+            wifiSTAon = 0;
+        }
+        wifiSTAstart();
+
+    } else {
+        wifiSTAonCN = 0;
+        if (serialmode == 1) {
+            Serial.print("WiFi OK - IP addres: ");
+            Serial.println(WiFi.localIP());
+        }
+
+        if (wifiSTAon == 0) {
+            wifiSTAon = 1;
+            timer.disable(timerid2);  // wifiSTAcheck
+            zapamietanyCzasOLED = aktualnyCzas;
+            SMSbuf = "IP: " + WiFi.localIP().toString() + "";
+            server.begin();
+            if (serialmode == 1) Serial.println("HTTP server started");
+        }
+    }
+}
+
 void konfiguracja() {
     DevID = server.arg("DevID").toInt();
     SubDevID = server.arg("SubDevID").toInt();
@@ -866,7 +970,8 @@ void konfiguracja() {
     allFrame = server.arg("allFrame").toInt();
     PALevel = server.arg("PALevel").toInt();
     NRFchannel = server.arg("NRFchannel").toInt();
-    RF24_rxAddr = server.arg("RF24_rxAddr").toInt();
+    uint8_t RF24_rxAddrTEMP = server.arg("RF24_rxAddr").toInt();
+    RF24_rxAddr = (127 << 24) + (118 << 16) + (RF24_rxAddrTEMP << 8) + 0;
     SW1TouchEnable = server.arg("SW1TouchEnable").toInt();
     OTAActive = server.arg("OTAActive").toInt();
     FactorySet = server.arg("FactorySet").toInt();
@@ -884,13 +989,20 @@ void konfiguracja() {
     jasnoscLED();
     dimmset_max = server.arg("dimmset_max").toInt();
     jasnosc2 = server.arg("jasnosc2").toInt();
+    dimmset_now2 = jasnosc2;
     dim2 = 1;
     jasnoscLED();
     dimm2set_max = server.arg("dimm2set_max").toInt();
     jasnosc3 = server.arg("jasnosc3").toInt();
+    dimmset_now3 = jasnosc3;
     dim3 = 1;
     jasnoscLED();
     dimm3set_max = server.arg("dimm3set_max").toInt();
+    relayToff1 = server.arg("relayToff1").toInt();
+    relayToff2 = server.arg("relayToff2").toInt();
+
+    strcpy(ssid, server.arg("SSID").c_str());
+    strcpy(password, server.arg("pass").c_str());
 
     create_json();
     server.send(200, "application/json", json);
@@ -901,7 +1013,7 @@ void handle_NotFound() {
 }
 void index_html() {
     File file = SPIFFS.open("/index.html");
-    size_t sent = server.streamFile(file, "text/HTML");
+    server.streamFile(file, "text/HTML");
 }
 void css_css() {
 }
@@ -927,8 +1039,14 @@ void create_json() {
            ",\"dimm2set_max\":" + String(dimm2set_max) +
            ",\"dimm3set_max\":" + String(dimm3set_max) +
            ",\"DimUpDownResolution\":" + String(DimUpDownResolution) +
-           ",\"RF24_rxAddr\":" + String(RF24_rxAddr) +
-           "},{\"frameID\":" + String(frameID) +
+           ",\"RF24_rxAddr\":" + String((RF24_rxAddr >> 8) & 0xFF) +
+           ",\"relayToff1\":" + String(relayToff1) +
+           ",\"relayToff2\":" + String(relayToff2) +
+
+           ",\"SSID\":\"" + String(ssid) +
+           "\",\"pass\":\"" + String(password) +
+
+           "\"},{\"frameID\":" + String(frameID) +
            ",\"celsius\":" + String(celsius) + "}]";
 }
 
@@ -942,23 +1060,13 @@ void handleRoot() {  // When URI / is requested, send a web page with a button
         "placeholder=\"Password\"></br><input type=\"submit\" "
         "value=\"Login\"></form><p>Try 'John Doe' and 'password123' ...</p>");
 }
-void handleLogin() {  // If a POST request is made to URI /login
-    if (!server.hasArg("username") || !server.hasArg("password") ||
-        server.arg("username") == NULL ||
-        server.arg("password") == NULL) {  // If the POST request doesn't have
-        // username and password data
-        server.send(400, "text/plain",
-                    "400: Invalid Request");  // The request is invalid, so send
-                                              // HTTP status 400
-        return;
+void handleLogin() {
+    if (!server.hasArg("username") || !server.hasArg("password") || server.arg("username") == NULL || server.arg("password") == NULL) {
+        server.send(400, "text/plain", "400: Invalid Request");
     }
-    if (server.arg("username") == "John Doe" &&
-        server.arg("password") == "password123") {  // If both the username and
-        // the password are correct
-        server.send(200, "text/html",
-                    "<h1>Welcome, " + server.arg("username") +
-                        "!</h1><p>Login successful</p>");
-    } else {  // Username and password don't match
+    if (server.arg("username") == "John Doe" && server.arg("password") == "password123") {
+        server.send(200, "text/html", "<h1>Welcome, " + server.arg("username") + "!</h1><p>Login successful</p>");
+    } else {
         server.send(401, "text/plain", "401: Unauthorized");
     }
 }
@@ -1003,7 +1111,6 @@ void zmiana_poziomu_jasnosci() {
             jasnosc = dimmset_now;
             dim1 = 1;  // dim2=0; dim3=0;
             jasnoscLED();
-            //sendNRF(3, dimmset_now);  // dla NRF 3 to funkcja dimmera .. sendNRF(fnID,uint16_t fndata);
         }
         if (dimmset_now >= dimmset_max || dimmset_now <= dimmset_min) {
             dimming_up = !dimming_up;
@@ -1020,7 +1127,7 @@ void oneClick() {
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-        //sendNRF(3, dimmset_now);
+
     }
     //wlaczamy na poprzedni poziom
     else if (dimmset_now == 0) {
@@ -1028,7 +1135,7 @@ void oneClick() {
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-        //sendNRF(3, dimmset_now);
+
     }
     //wylaczamy
     else if (dimmset_now > 0 && dimmset_last <= dimmset_now) {
@@ -1036,7 +1143,6 @@ void oneClick() {
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-        //sendNRF(3, dimmset_now);
     }
 }
 void DoubleClick() {
@@ -1048,7 +1154,7 @@ void DoubleClick() {
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-        //sendNRF(3, dimmset_now);
+
     }
     //wlaczamy na poprzedni poziom
     else if (dimmset_now == (dimmset_max + 1) && dimmset_last != (dimmset_max + 1)) {
@@ -1056,7 +1162,7 @@ void DoubleClick() {
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-        //sendNRF(3, dimmset_now);
+
     }
     //na MAX z wylaczonego
     else if (dimmset_now == 0) {
@@ -1064,7 +1170,6 @@ void DoubleClick() {
         jasnosc = dimmset_now;
         dim1 = 1;
         jasnoscLED();
-        //sendNRF(3, dimmset_now);
     }
 }
 
@@ -1082,7 +1187,12 @@ void jasnoscLED() {
     uint16_t TMPjasnosc = 0, TMPjasnosc2 = 0, TMPjasnosc3 = 0;
 
     if (dim1 == 1) {
-        sendNRF(3, dimmset_now);
+        if (SubDevID != 0) {
+            sendCAN(DevID, 3, dimmset_now, 0);
+        } else {
+            sendNRF(3, dimmset_now);
+        }
+
         //led[0].setupMax(jasnosc1);
         eepromBUF[0] = readEEPROM(0);
         eepromBUF[1] = readEEPROM(1);
@@ -1095,6 +1205,11 @@ void jasnoscLED() {
     }
 
     if (dim2 == 1) {
+        if (SubDevID != 0) {
+            sendCAN(DevID, 4, dimmset_now, 0);
+        } else {
+            sendNRF(4, dimmset_now);
+        }
         //led[1].setupMax(jasnosc2);
         eepromBUF[6] = readEEPROM(6);
         eepromBUF[7] = readEEPROM(7);
@@ -1107,6 +1222,11 @@ void jasnoscLED() {
     }
 
     if (dim3 == 1) {
+        if (SubDevID != 0) {
+            sendCAN(DevID, 5, dimmset_now, 0);
+        } else {
+            sendNRF(5, dimmset_now);
+        }
         //led[2].setupMax(jasnosc3);
         eepromBUF[8] = readEEPROM(8);
         eepromBUF[9] = readEEPROM(9);
@@ -1121,7 +1241,7 @@ void jasnoscLED() {
     rysuj_jasnosc_na_lcd();
 
     if (dim1 == 1 || dim2 == 1 || dim3 == 1) {
-        jasnosc_last = jasnosc;
+        //jasnosc_last = jasnosc;
         zapamietanyCzas1 = aktualnyCzas;
         zapiszweeprom = 1;
     }
@@ -1175,10 +1295,47 @@ void writeEEPROM(unsigned int adres, uint16_t dane, uint8_t dlugosc) {
     }
     zapamietanyCzasEEPROM = aktualnyCzas;
 }
+void writeStringToEEPROM(int adres, const String& ToWrite) {
+    byte size = ToWrite.length();
+    writeEEPROM(adres, size, 1);
+    Serial.println(size);
+    delay(6);
+    for (int i = 0; i < size; i++) {
+        adres++;
+        writeEEPROM(adres, ToWrite[i], 1);
+        Serial.print(ToWrite[i]);
+        Serial.println(adres);
+        delay(6);
+    }
+    // delay(100);
+}
+
+String readStringFromEEPROM(int addrOffset) {
+    int newStrLen = readEEPROM(addrOffset);
+    char data[newStrLen + 1];
+    if (newStrLen <= 32) {
+        for (int i = 0; i < newStrLen; i++) {
+            data[i] = readEEPROM(addrOffset + 1 + i);
+        }
+        data[newStrLen] = '\0';
+        // data[newStrLen] = "\/ 0";  // !!! NOTE !!! Remove the space between the slash "/" and "0" (I've added a space because otherwise there is a display bug)
+    } else {
+        if (serialmode == 1) Serial.print("Blad odczytu Strina z eeprom-za dlugi");
+    }
+    return String(data);
+}
 void SettingWriteEEPROM() {
     if (serialmode == 1) Serial.print("Zapisywanie ustawien...");
+
+    //writeEEPROM(36, , 1);
+    // delay(6);
+    writeStringToEEPROM(2033, password);
+    writeStringToEEPROM(2000, ssid);
+    writeEEPROM(34, relayToff2, 2);  //34,35
     delay(6);
-    writeEEPROM(31, RF24_rxAddr, 1);
+    writeEEPROM(32, relayToff1, 2);  // 32, 33
+    delay(6);
+    writeEEPROM(31, ((RF24_rxAddr >> 8) & 0xFF), 1);
     delay(6);
     writeEEPROM(29, dimm3set_max, 2);  // 29,30 BAJT dimm3set_max MSB
     delay(6);
@@ -1221,13 +1378,24 @@ void SettingWriteEEPROM() {
     writeEEPROM(4, DevID, 1);  // 4 BAJT devID
     delay(6);
     writeEEPROM(0, jasnosc, 2);  // 0,1 BAJT dim1 jasnosc MSB
+
     if (serialmode == 1) Serial.println("... zakonczone. Reset ESP.");
     SettingSave = 0;
-    ESP.restart();
+    if (ServerActive == 0) {
+        wificlose();
+    } else {
+        ESP.restart();
+    }
 }
 void FactoryWriteEEPROM() {
     if (serialmode == 1) Serial.print("Ustawienia fabryczne...");
-
+    writeStringToEEPROM(2000, "ssid");
+    writeStringToEEPROM(2033, "pass");
+    writeEEPROM(34, 5000, 2);  //34,35
+    delay(6);
+    writeEEPROM(32, 5000, 2);  // 32, 33
+    delay(6);
+    writeEEPROM(31, 0, 1);  // RF24_rxAddr
     delay(6);
     writeEEPROM(29, 999, 2);  // 29,30 BAJT dimm3set_max MSB
     delay(6);
@@ -1288,12 +1456,6 @@ byte readEEPROM(unsigned int eeaddress) {
 }
 
 void rysuj_jasnosc_na_lcd() {
-    /*if (jasnosc >= dimmset_max) {
-        dimmset_now = dimmset_max;
-    } else {
-        dimmset_now = jasnosc;
-    }*/
-
     int val = map(dimmset_now, 0, dimmset_max, 0, 95);
     if (val < 1 && dimmset_now > 0) {
         val = 1;
@@ -1350,49 +1512,55 @@ void rysujemy_na_lcd() {
     aktualizuj_timestr();
     display.setCursor(0, 16);
     display.print(timestr);
-    display.print(" ");
+    display.print("   ");
 
-    display.print(SW1TouchVal);
-    display.print(" ");
-    display.print(SW1TouchValMin);
+    display.print("R1:");
+    display.print(sp[0]);
+    display.print("|");
+    display.print("R2:");
+    display.print(sp[1]);
 
-    display.setCursor(0, 24);
-    display.print("CAN ID: 0x");
-    display.println(frameID, HEX);  // CAN-BUS ID
+    if (SMSbuf != "") {
+        if (aktualnyCzas - zapamietanyCzasOLED >= smsoled) {
+            SMSbuf = "";
+        }
+        display.setCursor(0, 24);
+        display.print(getsmstel());
+        display.setCursor(0, 32);
+        display.print(SMSbuf);
 
-    display.setCursor(0, 32);
-    display.print("NRF: ");
-    display.print(NRFbuf[0]);
-    display.print(", ");
-    display.println(NRFbuf[2] * 256 + NRFbuf[1]);
-    display.setCursor(100, 32);
-    display.print("PA:");
-    display.println(radio.getPALevel());
-
-    display.setCursor(0, 40);
-    display.print(getsmstel());
-    display.setCursor(0, 48);
-    display.print(SMSbuf);
-
-    /* temperatura narazie wylaczone bo testuje sms
-
-    display.setFont(&FreeSansBold24pt7b);
-    // dwie wersje wyswietlania temperatury, druga z miejscem dziesietnym
-    display.setCursor(20, 60);
-    char odczyt[4];
-    dtostrf(celsius, 3, 0, odczyt);
-    display.drawCircle(90, 39, 3, WHITE);
-    if (celsius == -99) {
-        display.print(" --");
     } else {
-        display.print(odczyt);
+        display.setCursor(0, 24);
+        display.print("CAN ID: 0x");
+        display.println(frameID, HEX);  // CAN-BUS ID
+
+        display.setCursor(0, 32);
+        display.print("NRF: ");
+        display.print(NRFbuf[0]);
+        display.print(", ");
+        display.println(NRFbuf[2] * 256 + NRFbuf[1]);
+        display.setCursor(100, 32);
+        display.print("PA:");
+        display.println(radio.getPALevel());
+
+        display.setFont(&FreeSansBold24pt7b);
+        // dwie wersje wyswietlania temperatury, druga z miejscem dziesietnym
+        display.setCursor(20, 60);
+        char odczyt[4];
+        dtostrf(celsius, 3, 0, odczyt);
+        display.drawCircle(90, 39, 3, WHITE);
+        if (celsius == -99) {
+            display.print(" --");
+        } else {
+            display.print(odczyt);
+        }
+        // display.setCursor(0,60); char odczyt[5]; dtostrf(celsius,3, 1, odczyt); display.print(odczyt); display.drawCircle(95,39,3, WHITE);
+        display.setFont(&FreeSans12pt7b);
+        display.print(" C");
+        display.setFont();
+
+        PokazSW1NaDisplay(0);
     }
-    // display.setCursor(0,60); char odczyt[5]; dtostrf(celsius,3, 1, odczyt); display.print(odczyt); display.drawCircle(95,39,3, WHITE);
-    display.setFont(&FreeSans12pt7b);
-    display.print(" C");
-    display.setFont();
-    */
-    PokazSW1NaDisplay(0);
     rysuj_jasnosc_na_lcd();  //w tej funkcji na koncu jest display.display();
 }
 
@@ -1516,16 +1684,13 @@ void InicjacjaSW1Touch() {
 }
 //odczyt najnowszego sms
 void readSMS() {
-    bool GSMmsg = 0;
     if (Serial.available() > 0) {
         SMSbuf = "";
-
-        //delay(100);  //wazne .. sprawdzic czemu
         while (Serial.available() > 0) {
             SMSbuf = Serial.readString();
         }
-        SMSbuf.toUpperCase();  // wiadomosc wielkimi literami
-
+        SMSbuf.toUpperCase();                // wiadomosc wielkimi literami
+        zapamietanyCzasOLED = aktualnyCzas;  // wlacznie czas na wylaczenie wyswietlania sms na OLED
         // tutaj beda sie wykonywaly polecenia z SMS
 
         if (SMSbuf.indexOf("@ONOFF1") > -1) {
@@ -1539,19 +1704,13 @@ void readSMS() {
         if (SMSbuf.indexOf("@SERVERONOFF") > -1) {
             ServerActive = !ServerActive;
             writeEEPROM(17, ServerActive, 1);
-            if (ServerActive == 0) {
-                WiFi.disconnect(true);
-                WiFi.mode(WIFI_OFF);
-                //WiFi.forceSleepBegin();
-                delay(100);
-            }
-            ESP.restart();
+            wificlose();
         }
         rysujemy_na_lcd();  // wyswietl SMS na OLED
         if (GSMmsg == 1) {
-            if (SMSbuf.indexOf("OK") == -1) {
-                Serial.println("AT+CMGDA=\"DEL ALL\"");  //usuwamy wszystkie SMS
-            }
+            // if (SMSbuf.indexOf("OK") == -1) {
+            Serial.println("AT+CMGDA=\"DEL ALL\"");  //usuwamy wszystkie SMS
+            // }
             GSMmsg = 0;
         }
     }
@@ -1573,11 +1732,39 @@ void serverON() {
 void relays(uint8_t n) {
     sp[n - 1] = !sp[n - 1];
     if (n <= 2) {
-        digitalWrite(relay, sp[n - 1]);
-        //Sim800l.sendSms(getsmstel(), String(sp[n - 1]));
+        digitalWrite(relay[n - 1], sp[n - 1]);
+        // Sim800l.sendSms(getsmstel(), String(sp[n - 1]));
     } else {  // NIE TESTOWANE
         uint16_t data = (n << 8) + sp[n - 1];
         sendNRF(6, data);
         sendCAN(255, 6, data, 0);  //toID - 255 dla wszystkich,
     }
 }
+void relaydimonoff() {
+    if ((dimmset_now > 0 || dimmset_now2 > 0 || dimmset_now3 > 0) && sp[0] == 0) {
+        // if (dimmset_now > 0 && sp[0] == 0) {
+        relays(1);
+        roff = 1;
+    } else if (roff == 1 && dimmset_now == 0 && dimmset_now2 == 0 && dimmset_now3 == 0 && sp[0] == 1) {
+        // } else if (roff == 1 && dimmset_now == 0 && sp[0] == 1) {
+        zapczas = aktualnyCzas;
+        roff = 0;
+    } else if (roff == 0 && (aktualnyCzas - zapczas >= (relayToff1 * 1000))) {  //relayToff
+        roff = 1;
+        relays(1);
+    }
+}
+
+// wymyslic kasowanie wiadomosci.
+// !! - sprawdzic
+
+// ustawienie dodatkowe aby od godziny np 23 / w nocy wlaczalo swiatlo na minimalny poziom. ale chyba to ustawienie do mastera.
+// dokonczyc przetestowac can.
+// napisac funkcje do doladowywania/ wysylania specjalnych sms w celu wlaczenia uslugi np dodatkowe sms.
+// napisac synchronizacje czasu przez CAN wysylajace do wszystkich modołów z mastera (255).
+// napisac restart modulu GSM co x czasu
+// napisac obsluge wielu przyciskow. napewno jeszcze 2 do sterowanie dim2 dim3.
+// po sprawdzaniu polaczenia wifi gdy nie bedzie polaczone napisac skrypt aby probowal sie polaczyc ponownie
+// opcja www Zawsze probuj laczyc do skonfigurowanej sieci wifi, jesli skonfigurowano wifi to zawsze lacz do niej
+
+// WWW - zapamietanie ssid, pass do eeprom, po nieudanej probie logowania do sieci lokalnej wlacza sie AP mode. Sprawdzanie polaczenia wifi co 5min. Jesli bedzie rozlaczene to bedzie probowac laczyc x co x czas.
