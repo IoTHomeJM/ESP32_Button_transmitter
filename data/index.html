@@ -12080,6 +12080,15 @@
                                 <label class="contact-form__label">Haslo:</label>
                                 <input class="contact-form__input contact-form__input--text" id="40" name="pass" type="text" value="" />
                             </div>
+                            <div class="contact-form__input-group">
+                                <label class="contact-form__label">Gdy brak LOKAL WIFI wlacz APmode: </label>
+                                </br><span class="p-4">
+                                    <label class="contact-form__label contact-form__label--radio" for="42">TAK</label>
+                                    <input class="contact-form__input contact-form__input--radio" id="42" name="wifiAPon" type="radio" value="1" />
+                                </span>
+                                <label class="contact-form__label contact-form__label--radio" for="41">NIE</label>
+                                <input class="contact-form__input contact-form__input--radio" id="41" name="wifiAPon" type="radio" value="0" />
+                            </div>
                     </div>
                     <div class="col-md-6 col-lg-6">
                         <h3 class="text-center text-uppercase text-white mb-0">ŚWIATŁO</h2>
@@ -12288,18 +12297,14 @@
                     $("#32").val(JSON.stringify(res[0].DimUpDownResolution));
                     $("#37").val(JSON.stringify(res[0].relayToff1));
                     $("#38").val(JSON.stringify(res[0].relayToff2));
-
-                    // const SSID = JSON.stringify(res[0].SSID);
-                    // const unquotedSSID = SSID.replaceAll("\"", "");
-                    // $("#39").val(unquotedSSID);
-
-                    // const pass = JSON.stringify(res[0].pass);
-                    // const unquotedpass = pass.replaceAll("\"", "");
-                    // $("#40").val(unquotedpass);
                     $("#39").val(JSON.stringify(res[0].SSID).replaceAll("\"", ""));
                     $("#40").val(JSON.stringify(res[0].pass).replaceAll("\"", ""));
-                    //$("#").val(JSON.stringify(res[0].frameID));
-                    //$("#").val(JSON.stringify(res[0].celsius));
+
+                    if (JSON.stringify(res[0].wifiAPon) == "1") {
+                        $("#42").prop("checked", true);
+                    } else {
+                        $("#41").prop("checked", true)
+                    }
 
                     res.forEach(el => {
                         //$('.user-list').append(`${el.name} : ${el.email}`);

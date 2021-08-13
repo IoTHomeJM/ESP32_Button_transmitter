@@ -68,7 +68,7 @@ char* password = strdup("Janek1@$Eva");
 
 String hostname = "SWModule";
 WebServer server(80);
-bool wifiSTAon = 0, WIFIconfigured = 0;
+bool wifiSTAon = 0, wifiAPon = 1;
 uint8_t wifiSTAonCN = 0;
 //<--server
 
@@ -182,6 +182,7 @@ void setup() {
     RF24_rxAddr = (127 << 24) + (118 << 16) + (eepromBUF[31] << 8) + 0;
     relayToff1 = eepromBUF[32] * 256 + eepromBUF[33];
     relayToff2 = eepromBUF[34] * 256 + eepromBUF[35];
+    wifiAPon = eepromBUF[36];
 
     strcpy(ssid, readStringFromEEPROM(2000).c_str());
     strcpy(password, readStringFromEEPROM(2033).c_str());
@@ -449,9 +450,10 @@ void setup() {
     timer.setInterval(1000, rysujemy_na_lcd);
     timer.setInterval(2000, InicjacjaOdczytTemperatury);
     if (ServerActive == 1) {
-        timerid1 = timer.setInterval(300000, wifiSTAcheck);  // co 5min 300000
+        timerid1 = timer.setInterval(60000, wifiSTAcheck);  // co 5min 300000
         timer.setInterval(1500, serverON);
-        timerid2 = timer.setTimer(6000, wifiSTAcheck, 5);
+        // timerid2 = timer.setTimer(6000, wifiSTAconnecting, 5);
+        timerid2 = timer.setInterval(6000, wifiSTAconnecting);
     }
     if (gsminit == 1) {
         timer.setInterval(500, readSMS);
@@ -507,21 +509,8 @@ void loop() {
 ////////////////////////////
 
 void EnableOTA() {
-    // ustawienie MAC Address musi byc przed podlaczeniem do WiFi
-    // uint8_t NEW_MACAddress[6] = {0x82,0x01,0x01,0x01,0x01,0x01}; //zostaw w pierwszym 82, sa rezerwacje na pewne nr np. 01...
-    // esp_base_mac_addr_set(NEW_MACAddress); //Serial.print("ESP Board MAC Address: "); Serial.println(WiFi.macAddress());
-
-    // WiFi.mode(WIFI_STA);
-    // WiFi.begin(ssid, password);
-
-    // while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    //     Serial.println("Connection Failed! Rebooting...");
-    //     delay(5000);
-    //     ESP.restart();
-    // }
-    // Serial.print("IP address: ");
-    // Serial.println(WiFi.localIP());
     ArduinoOTA.begin();
+    if (serialmode == 1) Serial.println("OTA aktywne");
 }
 
 void readNRF() {
@@ -924,7 +913,7 @@ void wifiSTAstart() {
     WiFi.setHostname(hostname.c_str());
     WiFi.begin(ssid, password);
 
-    if ((wifiSTAonCN >= 5) && (WIFIconfigured == 0)) {
+    if ((wifiSTAonCN >= 5) && (wifiAPon == 1)) {
         if (serialmode == 1) {
             Serial.println("brak polaczenia STA mode");
         }
@@ -932,33 +921,53 @@ void wifiSTAstart() {
         wifiapstart();
     }
 }
-void wifiSTAcheck() {
+void wifiSTAconnecting() {
     if (WiFi.status() != WL_CONNECTED) {
+        wifiSTAon = 0;
         wifiSTAonCN++;
         if (serialmode == 1) {
             Serial.print("Laczenie do WIFI - STA mode. ");
             Serial.println(" Ilosc prob: " + String(wifiSTAonCN) + "");
         }
-        if (wifiSTAon == 1) {
-            timer.enable(timerid2);  // wifiSTAcheck
-            wifiSTAon = 0;
+        if (wifiSTAonCN >= 5) {
+            wifiSTAonCN = 0;
+            timer.disable(timerid2);
+            if (serialmode == 1) {
+                Serial.println("timerid2 - disable ");
+            }
         }
         wifiSTAstart();
 
     } else {
-        wifiSTAonCN = 0;
+        wifiSTAcheck();
+    }
+}
+void wifiSTAcheck() {
+    if (WiFi.status() != WL_CONNECTED) {
         if (serialmode == 1) {
-            Serial.print("WiFi OK - IP addres: ");
-            Serial.println(WiFi.localIP());
+            Serial.println("Brak polaczenia WIFI - STA mode. ");
         }
-
+        wifiSTAonCN = 0;
+        timer.enable(timerid2);
+        timer.restartTimer(timerid2);
+    } else {
+        wifiSTAonCN = 0;
         if (wifiSTAon == 0) {
             wifiSTAon = 1;
             timer.disable(timerid2);  // wifiSTAcheck
             zapamietanyCzasOLED = aktualnyCzas;
             SMSbuf = "IP: " + WiFi.localIP().toString() + "";
             server.begin();
-            if (serialmode == 1) Serial.println("HTTP server started");
+            if (serialmode == 1) {
+                Serial.println("HTTP server started");
+            }
+            if (OTAActive == 1) {
+                EnableOTA();
+            }
+        }
+        if (serialmode == 1) {
+            Serial.print("WiFi OK - IP addres: ");
+            Serial.println(WiFi.localIP());
         }
     }
 }
@@ -1003,7 +1012,8 @@ void konfiguracja() {
 
     strcpy(ssid, server.arg("SSID").c_str());
     strcpy(password, server.arg("pass").c_str());
-
+    wifiAPon = server.arg("wifiAPon").toInt();
+    // a = server.arg("a").toInt();
     create_json();
     server.send(200, "application/json", json);
 }
@@ -1042,6 +1052,7 @@ void create_json() {
            ",\"RF24_rxAddr\":" + String((RF24_rxAddr >> 8) & 0xFF) +
            ",\"relayToff1\":" + String(relayToff1) +
            ",\"relayToff2\":" + String(relayToff2) +
+           ",\"wifiAPon\":" + String(wifiAPon) +
 
            ",\"SSID\":\"" + String(ssid) +
            "\",\"pass\":\"" + String(password) +
@@ -1327,8 +1338,10 @@ String readStringFromEEPROM(int addrOffset) {
 void SettingWriteEEPROM() {
     if (serialmode == 1) Serial.print("Zapisywanie ustawien...");
 
-    //writeEEPROM(36, , 1);
+    // writeEEPROM(37, wifiAPon, 1);
     // delay(6);
+    writeEEPROM(36, wifiAPon, 1);
+    delay(6);
     writeStringToEEPROM(2033, password);
     writeStringToEEPROM(2000, ssid);
     writeEEPROM(34, relayToff2, 2);  //34,35
@@ -1389,6 +1402,8 @@ void SettingWriteEEPROM() {
 }
 void FactoryWriteEEPROM() {
     if (serialmode == 1) Serial.print("Ustawienia fabryczne...");
+    writeEEPROM(36, 1, 1);
+    delay(6);
     writeStringToEEPROM(2000, "ssid");
     writeStringToEEPROM(2033, "pass");
     writeEEPROM(34, 5000, 2);  //34,35
@@ -1734,7 +1749,7 @@ void relays(uint8_t n) {
     if (n <= 2) {
         digitalWrite(relay[n - 1], sp[n - 1]);
         // Sim800l.sendSms(getsmstel(), String(sp[n - 1]));
-    } else {  // NIE TESTOWANE
+    } else {  // !! NIE TESTOWANE
         uint16_t data = (n << 8) + sp[n - 1];
         sendNRF(6, data);
         sendCAN(255, 6, data, 0);  //toID - 255 dla wszystkich,
@@ -1755,16 +1770,25 @@ void relaydimonoff() {
     }
 }
 
-// wymyslic kasowanie wiadomosci.
+// wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
-
+//  WiFi.macAddress() jako nazwa urzadzenia?`1`1
 // ustawienie dodatkowe aby od godziny np 23 / w nocy wlaczalo swiatlo na minimalny poziom. ale chyba to ustawienie do mastera.
 // dokonczyc przetestowac can.
 // napisac funkcje do doladowywania/ wysylania specjalnych sms w celu wlaczenia uslugi np dodatkowe sms.
+// napisac funkcje sprawdzajaca saldo konta jesli jest to prepaid-opcja zaznaczenia na www, wpisania kodu sprawdzajacego saldo
 // napisac synchronizacje czasu przez CAN wysylajace do wszystkich modołów z mastera (255).
 // napisac restart modulu GSM co x czasu
 // napisac obsluge wielu przyciskow. napewno jeszcze 2 do sterowanie dim2 dim3.
-// po sprawdzaniu polaczenia wifi gdy nie bedzie polaczone napisac skrypt aby probowal sie polaczyc ponownie
-// opcja www Zawsze probuj laczyc do skonfigurowanej sieci wifi, jesli skonfigurowano wifi to zawsze lacz do niej
+// napisac mozliwosc nazwy urzadzenia/pomieszczenia
+// napisac synchronizacje aktualnej godziny przez www
+// gdy ustawienia fabryczne to jest wlaczone wifi AP
+// za pomoca przycisku mozliwosc wylaczenia/wlaczenia ota. gdy wylaczone wifi to wlacza wifi i pozniej wylacza, gdy wlaczone wifi to wylacza tylko ota
+//
+// **
+//projekt  pio run --target upload --upload-port 192.168.43.47
+//fs       pio run --target uploadfs --upload-port 192.168.43.47
 
-// WWW - zapamietanie ssid, pass do eeprom, po nieudanej probie logowania do sieci lokalnej wlacza sie AP mode. Sprawdzanie polaczenia wifi co 5min. Jesli bedzie rozlaczene to bedzie probowac laczyc x co x czas.
+// *** KOMITY ***
+// WWW dodano zmienna wifiAPon - po zaniku lokalnego wifi-STA, bedzie probowal sie ponownie polaczyc. Jesli nie uda sie to wlaczy AP mode lub bedzie probowal nadal laczyc co 5 min.
+// WWW - zapamietanie ssid, pass do eeprom, po nieudanej probie logowania do sieci lokalnej wlacza sie AP mode. Sprawdzanie polaczenia wifi co 5min. Jesli bedzie rozlaczene to bedzie probowac laczyc x co x czas. Poprawa OTA,
