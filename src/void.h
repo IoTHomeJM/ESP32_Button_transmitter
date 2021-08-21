@@ -11,17 +11,29 @@ void css_css();
 void create_json();
 void handleRoot();
 void handleLogin();
-void zmiana_poziomu_jasnosci();
-void oneClick();
-void DoubleClick();
-void LongPressStart();
+void zmiana_poziomu_jasnosci(uint16_t nrLED);
+
+void oneClick0();
+void DoubleClick0();
+void LongPressStart0();
+
+void oneClick1();
+void DoubleClick1();
+void LongPressStart1();
+
+void oneClick2();
+void DoubleClick2();
+void LongPressStart2();
+
 void LongPressStop();
-void jasnoscLED();
+// void jasnoscLED();
+void jasnoscLED(uint8_t nrLED, uint16_t jas);
 void DimmWriteEEPROM();
 void writeEEPROM(unsigned int adres, uint16_t dane, uint8_t dlugosc);
 void SettingWriteEEPROM();
 void FactoryWriteEEPROM();
-void rysuj_jasnosc_na_lcd();
+
+void rysuj_jasnosc_na_lcd(uint16_t nrLED);
 void rysujemy_na_lcd(void);
 void aktualizuj_timestr();
 void InicjacjaOdczytTemperatury();
@@ -40,6 +52,6 @@ void wificlose();
 void relaydimonoff();
 void wifiSTAstart();
 void wifiSTAcheck();
-void writeStringToEEPROM(int adres, const String &ToWrite);
+void writeStringToEEPROM(int adres, const String& ToWrite);
 String readStringFromEEPROM(int addrOffset);
 void wifiSTAconnecting();

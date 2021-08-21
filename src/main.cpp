@@ -22,6 +22,9 @@
 #include "RF24.h"
 #include "SPIFFS.h"
 #include "nRF24L01.h"
+int zaok = 5;          // zaokraglenia suwaka jasnosci na oled
+int dimActivNumb = 0;  //dla rysowania jasnosci na oled.
+bool checkOne1 = 1;
 
 unsigned int czasnazapisweeprom = 6000;  //w milisekundach, 6 sekund, w przypadku brak zmiany jasnosci przez ten czas powoduje zapis w eeprom
 
@@ -31,7 +34,7 @@ uint16_t FreqLED = 25000;     // czestotliwosc LED
 uint16_t ResolutionLED = 10;  // Rozdzielczosc w bitach.
 
 // zmiennych ponizej nie edytujemy
-unsigned int jasnosc = 0, jasnosc2 = 0, jasnosc3 = 0;
+// unsigned int jasnosc = 0, jasnosc2 = 0, jasnosc3 = 0;  // wykorzystywane do zapisywnie eeprom
 unsigned int jasnosc_last = 0;  // !! chyba nigdzie nie jest wykorzystywane
 unsigned int jasnosc_max = 0;   // !! chyba nigdzie nie jest wykorzystywane
 byte eepromBUF[64];             // bufor dla zapisu/odczytu eeprom
@@ -48,10 +51,15 @@ bool dim1 = 0, dim2 = 0, dim3 = 0, LightOnBoot = 0;
 uint8_t DimUpDownResolution = 20;  // szybkosc regulacji jasnosci led za pomoca przycisku
 
 // dla przycisku, regulacja jasnosci
+int dimmsetNow[4] = {0};
+uint8_t numDIM = 0;
+int dimmsetLast[4] = {0};
+int dimmsetMax[4] = {999, 999, 999, 999};
 int16_t dimmset_now = 0, dimmset_now2 = 0, dimmset_now3 = 0;
-int16_t dimmset_last = 0, dimmset_last2 = 0, dimmset_last3 = 0;
+// int16_t dimmset_last = 0, dimmset_last2 = 0, dimmset_last3 = 0;
+// int16_t dimmset_max = 999, dimm2set_max = 999, dimm3set_max = 999;
+
 int16_t dimmset_min = 2;
-int16_t dimmset_max = 999, dimm2set_max = 999, dimm3set_max = 999;
 
 //<--Dimmer
 //--> server
@@ -75,7 +83,7 @@ uint8_t wifiSTAonCN = 0;
 //--> CAN-BUS
 
 uint8_t Flag = 0;      // 1 bit
-uint8_t SubDevID = 0;  // 4 bity od 0 do 15. wykorzystywane np po to aby zazadzac drugim modulem po CAN z tym zamym DevID
+uint8_t SubDevID = 0;  // 4 bity od 0 do 15. wykorzystywane np po to, aby zarzadzac drugim modulem po CAN z tym zamym DevID. Gdy nadajnik i dimmer sa  polaczone z CAN-BUS dajemy w dimmer 1-15
 uint8_t DevID = 2;     // 8bit ID tego urzadzenia, ID 1 to master.
 uint32_t frameID = 0;
 bool allFrame = 0;         // jesli 0 to przyjmuje ramki z filtrem
@@ -86,7 +94,7 @@ bool OnDevices[25] = {0};  // lista wlaczonych urzadzen - tylko dla mastera. tes
 
 SimpleTimer timer;
 
-const uint8_t SW1pin = 19;
+const uint8_t SW1pin = 19, SW2pin = 18, SW3pin = 17, SW4pin = 16;
 //const uint8_t SW1pin = 0;
 const uint8_t SW1TouchPin = 33;
 
@@ -115,7 +123,10 @@ Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 //<--
 
 // OneButton button(SW1pin, true, 1);
-OneButton button(SW1pin, true);
+OneButton button(SW1pin, true);   //SW1pin
+OneButton button1(SW2pin, true);  //SW2pin
+OneButton button2(SW3pin, true);
+OneButton button3(SW4pin, true);
 bool button_is_long_pressed = 0;
 bool dimming_up = 0;
 bool poRestarcieTestSW1 = 1;
@@ -158,9 +169,12 @@ void setup() {
     for (int i = 0; i < 64; ++i) {
         eepromBUF[i] = readEEPROM(i);
     }  // read 32 byte eeprom
-    jasnosc = eepromBUF[0] * 256 + eepromBUF[1];
-    jasnosc2 = eepromBUF[6] * 256 + eepromBUF[7];
-    jasnosc3 = eepromBUF[8] * 256 + eepromBUF[9];
+    // jasnosc = eepromBUF[0] * 256 + eepromBUF[1];
+    // jasnosc2 = eepromBUF[6] * 256 + eepromBUF[7];
+    // jasnosc3 = eepromBUF[8] * 256 + eepromBUF[9];
+    dimmsetLast[0] = eepromBUF[0] * 256 + eepromBUF[1];
+    dimmsetLast[1] = eepromBUF[6] * 256 + eepromBUF[7];
+    dimmsetLast[2] = eepromBUF[8] * 256 + eepromBUF[9];
     DevID = eepromBUF[4];
     SubDevID = eepromBUF[5];
     LightOnBoot = eepromBUF[10];
@@ -175,10 +189,10 @@ void setup() {
     FreqLED = eepromBUF[19] * 256 + eepromBUF[20];
     czasnazapisweeprom = eepromBUF[21] * 256 + eepromBUF[22];
     serialmode = eepromBUF[23];
-    dimmset_max = eepromBUF[24] * 256 + eepromBUF[25];
+    dimmsetMax[0] = eepromBUF[24] * 256 + eepromBUF[25];
     DimUpDownResolution = eepromBUF[26];
-    dimm2set_max = eepromBUF[27] * 256 + eepromBUF[28];
-    dimm3set_max = eepromBUF[29] * 256 + eepromBUF[30];
+    dimmsetMax[1] = eepromBUF[27] * 256 + eepromBUF[28];
+    dimmsetMax[2] = eepromBUF[29] * 256 + eepromBUF[30];
     RF24_rxAddr = (127 << 24) + (118 << 16) + (eepromBUF[31] << 8) + 0;
     relayToff1 = eepromBUF[32] * 256 + eepromBUF[33];
     relayToff2 = eepromBUF[34] * 256 + eepromBUF[35];
@@ -188,9 +202,7 @@ void setup() {
     strcpy(password, readStringFromEEPROM(2033).c_str());
 
     //dimmset_now = jasnosc;
-    dimmset_last = jasnosc;
-    dimmset_last2 = jasnosc2;
-    dimmset_last3 = jasnosc3;
+
     // konfikuracja poczatkowa przekaznika
     pinMode(relay[0], OUTPUT);
     pinMode(relay[1], OUTPUT);
@@ -210,11 +222,11 @@ void setup() {
         Serial.print("json: ");
         Serial.println(json);
         Serial.print("jasnosc: ");
-        Serial.println(jasnosc);
+        Serial.println(dimmsetLast[0]);
         Serial.print("jasnosc2: ");
-        Serial.println(jasnosc2);
+        Serial.println(dimmsetLast[1]);
         Serial.print("jasnosc3: ");
-        Serial.println(jasnosc3);
+        Serial.println(dimmsetLast[2]);
         Serial.print("DevID: ");
         Serial.println(DevID);
         Serial.print("LightOnBoot: ");
@@ -237,24 +249,24 @@ void setup() {
         Serial.println(czasnazapisweeprom);
         Serial.print("serialmode: ");
         Serial.println(serialmode);
-        Serial.print("dimmset_max: ");
-        Serial.println(dimmset_max);
-        Serial.print("dimm2set_max: ");
-        Serial.println(dimm2set_max);
-        Serial.print("dimm3set_max: ");
-        Serial.println(dimm3set_max);
+        Serial.print("dimmsetMax[0]: ");
+        Serial.println(dimmsetMax[0]);
+        Serial.print("dimmsetMax[1]: ");
+        Serial.println(dimmsetMax[1]);
+        Serial.print("dimmsetMax[2]: ");
+        Serial.println(dimmsetMax[2]);
         Serial.print("DimUpDownResolution: ");
         Serial.println(DimUpDownResolution);
         Serial.print("Pelny RF24_rxAddr: ");
         Serial.println(RF24_rxAddr);
         Serial.print("RF24_rxAddr: ");
         Serial.println((RF24_rxAddr >> 8) & 255);
-        Serial.print("dimmset_now: ");
-        Serial.println(dimmset_now);
-        Serial.print("dimmset_now2: ");
-        Serial.println(dimmset_now2);
-        Serial.print("dimmset_now3: ");
-        Serial.println(dimmset_now3);
+        Serial.print("dimmsetNow[0]: ");
+        Serial.println(dimmsetNow[0]);
+        Serial.print("dimmsetNow[1]: ");
+        Serial.println(dimmsetNow[1]);
+        Serial.print("dimmsetNow[2]: ");
+        Serial.println(dimmsetNow[2]);
         Serial.print("ssi: ");
         Serial.println(ssid);
         Serial.print("password: ");
@@ -285,7 +297,7 @@ void setup() {
 
     if (LightOnBoot == 1) {  //max jasnosc podczas startu procesora
         //led[0].setupMax(jasnosc);
-        dimmset_now = jasnosc;  // poprwka przekazanie jasnosci on boot z eeprom tez na wyswietlacz
+        dimmsetNow[0] = jasnosc;  // poprwka przekazanie jasnosci on boot z eeprom tez na wyswietlacz
         dim1 = 1;
         jasnoscLED();
     }
@@ -316,13 +328,28 @@ void setup() {
     }
     //<-- CAN-BUS
 
-    dimmset_max -= 1;
+    dimmsetMax[0] -= 1;
 
-    button.attachClick(oneClick);
-    button.attachDoubleClick(DoubleClick);
-    button.attachLongPressStart(LongPressStart);
+    button.attachClick(oneClick0);
+    button.attachDoubleClick(DoubleClick0);
+    button.attachLongPressStart(LongPressStart0);
     button.attachLongPressStop(LongPressStop);
 
+    button1.attachClick(oneClick1);
+    button1.attachDoubleClick(DoubleClick1);
+    button1.attachLongPressStart(LongPressStart1);
+    button1.attachLongPressStop(LongPressStop);
+
+    button2.attachClick(oneClick2);
+    button2.attachDoubleClick(DoubleClick2);
+    button2.attachLongPressStart(LongPressStart2);
+    button2.attachLongPressStop(LongPressStop);
+
+    // button 3 (fizycznie 4) narazie nie obslugiwany
+    button3.attachClick(oneClick0);
+    button3.attachDoubleClick(DoubleClick0);
+    button3.attachLongPressStart(LongPressStart0);
+    button3.attachLongPressStop(LongPressStop);
     //--> dla oled 0.9 cala // Address 0x3D for 128x64
 
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
@@ -451,7 +478,7 @@ void setup() {
     timer.setInterval(2000, InicjacjaOdczytTemperatury);
     if (ServerActive == 1) {
         timerid1 = timer.setInterval(60000, wifiSTAcheck);  // co 5min 300000
-        timer.setInterval(1500, serverON);
+        timer.setInterval(150, serverON);                   //1500
         // timerid2 = timer.setTimer(6000, wifiSTAconnecting, 5);
         timerid2 = timer.setInterval(6000, wifiSTAconnecting);
     }
@@ -478,7 +505,7 @@ void loop() {
     readNRF();
     relaydimonoff();
     if (button_is_long_pressed == 1) {
-        zmiana_poziomu_jasnosci();
+        zmiana_poziomu_jasnosci(numDIM);
     }
 
     if (SW1TouchActive == 1) {
@@ -488,6 +515,9 @@ void loop() {
         button.tick(SW1TouchPressed);
     } else {
         button.tick();
+        button1.tick();
+        button2.tick();
+        button3.tick();
     }
 
     if (OTAActive == 1) {
@@ -529,34 +559,33 @@ void readNRF() {
             case 2:
                 break;
             case 3:
-                jasnosc = NRFbuf[2] * 256 + NRFbuf[1];
-                dimmset_now = jasnosc;
+                dimmsetNow[0] = NRFbuf[2] * 256 + NRFbuf[1];
                 dim1 = 1;
-                jasnoscLED();
+                jasnoscLED(0, dimmsetNow[0]);
                 if (serialmode == 1) {
                     Serial.print("Jasnosc odebrana z nadajnika:");
-                    Serial.println(jasnosc);
+                    Serial.println(dimmsetNow[0]);
                 }
                 break;
             case 4:
-                jasnosc2 = NRFbuf[2] * 256 + NRFbuf[1];
+                dimmsetNow[1] = NRFbuf[2] * 256 + NRFbuf[1];
                 dim2 = 1;
-                jasnoscLED();
+                jasnoscLED(1, dimmsetNow[1]);
                 if (serialmode == 1) {
                     Serial.print("Jasnosc odebrana z nadajnika:");
-                    Serial.println(jasnosc2);
+                    Serial.println(dimmsetNow[1]);
                 }
                 break;
             case 5:
-                jasnosc3 = NRFbuf[2] * 256 + NRFbuf[1];
+                dimmsetNow[2] = NRFbuf[2] * 256 + NRFbuf[1];
                 dim3 = 1;
-                jasnoscLED();
+                jasnoscLED(2, dimmsetNow[2]);
                 if (serialmode == 1) {
                     Serial.print("Jasnosc odebrana z nadajnika:");
-                    Serial.println(jasnosc3);
+                    Serial.println(dimmsetNow[2]);
                 }
                 break;
-            case 6: {  // przekazniek wirtualny
+            case 6: {  // przekaznik wirtualny
                 //sp[NRFbuf[1]] = NRFbuf[2];  // nie wiem czy dobrze
             }
 
@@ -717,43 +746,46 @@ void readCAN() {
             case 1:  // odpowiadamy masterowi obecnosc urzadzenia na CANie
                 sendCAN(1, 1, 0, 0);
                 if (serialmode == 1) {
-                    Serial.println("fnID 1 ramka wyslana");
+                    Serial.println("fnID 1, ramka wyslana");
                 }
                 break;
             case 2:  // synchronizacja czasu
                 setTime(inFrame.data.uint32[0] + 7200);
                 break;
             case 3:  // dimmer 1 // NIE TESTOWANE
-                jasnosc = inFrame.data.uint16[0];
+                dimmsetNow[0] = inFrame.data.uint16[0];
                 dim1 = 1;
-                jasnoscLED();
+                jasnoscLED(0, dimmsetNow[0]);
                 break;
             case 4:  // dimmer 2 // NIE TESTOWANE
-                jasnosc2 = inFrame.data.uint16[0];
+                dimmsetNow[1] = inFrame.data.uint16[0];
                 dim2 = 1;
-                jasnoscLED();
+                jasnoscLED(1, dimmsetNow[1]);
                 break;
             case 5:  // dimmer 3 // NIE TESTOWANE
-                jasnosc3 = inFrame.data.uint16[0];
+                dimmsetNow[2] = inFrame.data.uint16[0];
                 dim3 = 1;
-                jasnoscLED();
+                jasnoscLED(2, dimmsetNow[2]);
                 break;
             case 6:  // wszystkie !! NIE TESTOWANE
-                jasnosc = inFrame.data.uint16[0];
+                dimmsetNow[0] = inFrame.data.uint16[0];
                 dim1 = 1;
-                jasnosc2 = inFrame.data.uint16[1];
+                jasnoscLED(0, dimmsetNow[0]);
+                dimmsetNow[1] = inFrame.data.uint16[1];
                 dim2 = 1;
-                jasnosc3 = inFrame.data.uint16[2];
+                jasnoscLED(1, dimmsetNow[1]);
+                dimmsetNow[2] = inFrame.data.uint16[2];
                 dim3 = 1;
+                jasnoscLED(2, dimmsetNow[2]);
                 if (serialmode == 1) {
                     Serial.print("Jasnosc1: ");
-                    Serial.println(jasnosc);
+                    Serial.println(dimmsetNow[0]);
                     Serial.print("Jasnosc2: ");
-                    Serial.println(jasnosc2);
+                    Serial.println(dimmsetNow[1]);
                     Serial.print("Jasnosc3: ");
-                    Serial.println(jasnosc3);
+                    Serial.println(dimmsetNow[2]);
                 }
-                jasnoscLED();
+
                 break;
             case 7:
                 break;
@@ -950,6 +982,9 @@ void wifiSTAcheck() {
         wifiSTAonCN = 0;
         timer.enable(timerid2);
         timer.restartTimer(timerid2);
+        if (serialmode == 1) {
+            Serial.println("timerid2 - enable ");
+        }
     } else {
         wifiSTAonCN = 0;
         if (wifiSTAon == 0) {
@@ -992,21 +1027,19 @@ void konfiguracja() {
     serialmode = server.arg("serialmode").toInt();
     DimUpDownResolution = server.arg("DimUpDownResolution").toInt();
     SettingSave = server.arg("eeprom_save").toInt();
-    jasnosc = server.arg("jasnosc1").toInt();
-    dimmset_now = jasnosc;
-    dim1 = 1;
-    jasnoscLED();
-    dimmset_max = server.arg("dimmset_max").toInt();
-    jasnosc2 = server.arg("jasnosc2").toInt();
-    dimmset_now2 = jasnosc2;
-    dim2 = 1;
-    jasnoscLED();
-    dimm2set_max = server.arg("dimm2set_max").toInt();
-    jasnosc3 = server.arg("jasnosc3").toInt();
-    dimmset_now3 = jasnosc3;
-    dim3 = 1;
-    jasnoscLED();
-    dimm3set_max = server.arg("dimm3set_max").toInt();
+
+    dimmsetNow[0] = server.arg("jasnosc1").toInt();
+    jasnoscLED(0, dimmsetNow[0]);
+    dimmsetMax[0] = server.arg("dimmset_max").toInt();
+
+    dimmsetNow[1] = server.arg("jasnosc2").toInt();
+    jasnoscLED(1, dimmsetNow[1]);
+    dimmsetMax[1] = server.arg("dimm2set_max").toInt();
+
+    dimmsetNow[2] = server.arg("jasnosc3").toInt();
+    jasnoscLED(2, dimmsetNow[2]);
+    dimmsetMax[2] = server.arg("dimm3set_max").toInt();
+
     relayToff1 = server.arg("relayToff1").toInt();
     relayToff2 = server.arg("relayToff2").toInt();
 
@@ -1042,12 +1075,12 @@ void create_json() {
            ",\"czasnazapisweeprom\":" + String(czasnazapisweeprom) +
            ",\"LightOnBoot\":" + String(LightOnBoot) +
            ",\"serialmode\":" + String(serialmode) +
-           ",\"jasnosc1\":" + String(jasnosc) +
-           ",\"jasnosc2\":" + String(jasnosc2) +
-           ",\"jasnosc3\":" + String(jasnosc3) +
-           ",\"dimmset_max\":" + String(dimmset_max) +
-           ",\"dimm2set_max\":" + String(dimm2set_max) +
-           ",\"dimm3set_max\":" + String(dimm3set_max) +
+           ",\"jasnosc1\":" + String(readEEPROM(0) * 256 + readEEPROM(1)) +
+           ",\"jasnosc2\":" + String(readEEPROM(6) * 256 + readEEPROM(7)) +
+           ",\"jasnosc3\":" + String(readEEPROM(8) * 256 + readEEPROM(9)) +
+           ",\"dimmset_max\":" + String(dimmsetMax[0]) +
+           ",\"dimm2set_max\":" + String(dimmsetMax[1]) +
+           ",\"dimm3set_max\":" + String(dimmsetMax[2]) +
            ",\"DimUpDownResolution\":" + String(DimUpDownResolution) +
            ",\"RF24_rxAddr\":" + String((RF24_rxAddr >> 8) & 0xFF) +
            ",\"relayToff1\":" + String(relayToff1) +
@@ -1084,109 +1117,215 @@ void handleLogin() {
 
 //<-- server
 
-void zmiana_poziomu_jasnosci() {
+void zmiana_poziomu_jasnosci(uint16_t nrLED) {
     static uint64_t zapamietanyCzas1 = 0;
     static uint64_t zapamietanyCzas2 = 0;
-
+    // dimmset_now = dimmsetLast[nrLED];
     if (aktualnyCzas - zapamietanyCzas2 >= 2000UL) {
         if (aktualnyCzas - zapamietanyCzas1 >= 200UL) {
             zapamietanyCzas1 = aktualnyCzas;
 
             if (dimming_up) {
-                if (dimmset_now < 15) {
-                    dimmset_now += 1;
-                } else if ((dimmset_now >= 15) && (dimmset_now <= 40)) {
-                    dimmset_now += 5;
+                if (dimmsetNow[nrLED] < 15) {
+                    dimmsetNow[nrLED] += 1;
+                } else if ((dimmsetNow[nrLED] >= 15) && (dimmsetNow[nrLED] <= 40)) {
+                    dimmsetNow[nrLED] += 5;
                 } else {
-                    dimmset_now += DimUpDownResolution;
+                    dimmsetNow[nrLED] += DimUpDownResolution;
                 }
             } else {
-                if (dimmset_now < 15) {
-                    dimmset_now -= 1;
-                } else if ((dimmset_now >= 15) && (dimmset_now <= 40)) {
-                    dimmset_now -= 5;
+                if (dimmsetNow[nrLED] < 15) {
+                    dimmsetNow[nrLED] -= 1;
+                } else if ((dimmsetNow[nrLED] >= 15) && (dimmsetNow[nrLED] <= 40)) {
+                    dimmsetNow[nrLED] -= 5;
                 } else {
-                    dimmset_now -= DimUpDownResolution;
+                    dimmsetNow[nrLED] -= DimUpDownResolution;
                 }
             }
 
-            if (dimmset_now > dimmset_max) {
-                dimmset_now = dimmset_max;
+            if (dimmsetNow[nrLED] > dimmsetMax[nrLED]) {
+                dimmsetNow[nrLED] = dimmsetMax[nrLED];
                 zapamietanyCzas2 = aktualnyCzas;
             }
-            if (dimmset_now < dimmset_min) {
-                dimmset_now = dimmset_min;
+            if (dimmsetNow[nrLED] < dimmset_min) {
+                dimmsetNow[nrLED] = dimmset_min;
                 zapamietanyCzas2 = aktualnyCzas;
             }
-            dimmset_last = dimmset_now;
-            jasnosc = dimmset_now;
-            dim1 = 1;  // dim2=0; dim3=0;
-            jasnoscLED();
+            dimmsetLast[nrLED] = dimmsetNow[nrLED];
+            // jasnosc = dimmsetNow[nrLED];
+
+            jasnoscLED(nrLED, dimmsetNow[nrLED]);
         }
-        if (dimmset_now >= dimmset_max || dimmset_now <= dimmset_min) {
+        if (dimmsetNow[nrLED] >= dimmsetMax[nrLED] || dimmsetNow[nrLED] <= dimmset_min) {
             dimming_up = !dimming_up;
         }
     }
 }
 
-void oneClick() {
+void oneClick0() {
+    uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("oneClick");
     //pierwszy raz po reset
-    if (dimmset_now == 0 && dimmset_last == 0) {
-        dimmset_now = dimmset_max;
-        dimmset_last = dimmset_now;
-        jasnosc = dimmset_now;
-        dim1 = 1;
-        jasnoscLED();
+    if (dimmsetNow[nrLED] == 0 && dimmsetLast[nrLED] == 0) {
+        dimmsetNow[nrLED] = dimmsetMax[nrLED];
+        dimmsetLast[nrLED] = dimmsetNow[nrLED];
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    }
+    //wlaczamy na poprzedni poziom
+    else if (dimmsetNow[nrLED] == 0) {
+        dimmsetNow[nrLED] = dimmsetLast[nrLED];
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    }
+    //wylaczamy
+    else if (dimmsetNow[nrLED] > 0 && dimmsetLast[nrLED] <= dimmsetNow[nrLED]) {
+        dimmsetNow[nrLED] = 0;
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    }
+}
+void DoubleClick0() {
+    uint8_t nrLED = 0;
+    if (serialmode == 1) Serial.println("DoubleClick");
+    //wlaczamy na MAX
+    if (dimmsetNow[nrLED] > 0 && dimmsetLast[0] < (dimmsetMax[nrLED] + 1) && dimmsetNow[nrLED] < (dimmsetMax[nrLED] + 1)) {
+        dimmsetLast[nrLED] = dimmsetNow[nrLED];
+        dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    }
+    //wlaczamy na poprzedni poziom
+    else if (dimmsetNow[nrLED] == (dimmsetMax[nrLED] + 1) && dimmsetLast[nrLED] != (dimmsetMax[nrLED] + 1)) {
+        dimmsetNow[nrLED] = dimmsetLast[nrLED];
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    }
+    //na MAX z wylaczonego
+    else if (dimmsetNow[nrLED] == 0) {
+        dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    }
+}
+
+void LongPressStart0() {
+    uint8_t nrLED = 0;
+    if (serialmode == 1) Serial.println("LongPressStart");
+    button_is_long_pressed = 1;
+    numDIM = nrLED;
+}
+
+void oneClick1() {
+    uint8_t nrLED = 1;
+
+    if (serialmode == 1) Serial.println("oneClick 1");
+    //pierwszy raz po reset
+    if (dimmsetNow[nrLED] == 0 && dimmsetLast[nrLED] == 0) {
+        dimmsetNow[nrLED] = dimmsetMax[nrLED];
+        dimmsetLast[nrLED] = dimmsetNow[nrLED];
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
 
     }
     //wlaczamy na poprzedni poziom
-    else if (dimmset_now == 0) {
-        dimmset_now = dimmset_last;
-        jasnosc = dimmset_now;
-        dim1 = 1;
-        jasnoscLED();
+    else if (dimmsetNow[nrLED] == 0) {
+        dimmsetNow[nrLED] = dimmsetLast[nrLED];
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
 
     }
     //wylaczamy
-    else if (dimmset_now > 0 && dimmset_last <= dimmset_now) {
-        dimmset_now = 0;
-        jasnosc = dimmset_now;
-        dim1 = 1;
-        jasnoscLED();
+    else if (dimmsetNow[nrLED] > 0 && dimmsetLast[nrLED] <= dimmsetNow[nrLED]) {
+        dimmsetNow[nrLED] = 0;
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
 }
-void DoubleClick() {
+void DoubleClick1() {
+    uint8_t nrLED = 1;
     if (serialmode == 1) Serial.println("DoubleClick");
     //wlaczamy na MAX
-    if (dimmset_now > 0 && dimmset_last < (dimmset_max + 1) && dimmset_now < (dimmset_max + 1)) {
-        dimmset_last = dimmset_now;
-        dimmset_now = (dimmset_max + 1);
-        jasnosc = dimmset_now;
-        dim1 = 1;
-        jasnoscLED();
+    if (dimmsetNow[nrLED] > 0 && dimmsetLast[0] < (dimmsetMax[nrLED] + 1) && dimmsetNow[nrLED] < (dimmsetMax[nrLED] + 1)) {
+        dimmsetLast[nrLED] = dimmsetNow[nrLED];
+        dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
 
     }
     //wlaczamy na poprzedni poziom
-    else if (dimmset_now == (dimmset_max + 1) && dimmset_last != (dimmset_max + 1)) {
-        dimmset_now = dimmset_last;
-        jasnosc = dimmset_now;
-        dim1 = 1;
-        jasnoscLED();
+    else if (dimmsetNow[nrLED] == (dimmsetMax[nrLED] + 1) && dimmsetLast[nrLED] != (dimmsetMax[nrLED] + 1)) {
+        dimmsetNow[nrLED] = dimmsetLast[nrLED];
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
 
     }
     //na MAX z wylaczonego
-    else if (dimmset_now == 0) {
-        dimmset_now = (dimmset_max + 1);
-        jasnosc = dimmset_now;
-        dim1 = 1;
-        jasnoscLED();
+    else if (dimmsetNow[nrLED] == 0) {
+        dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
 }
 
-void LongPressStart() {
+void LongPressStart1() {
+    uint8_t nrLED = 1;
     if (serialmode == 1) Serial.println("LongPressStart");
     button_is_long_pressed = 1;
+    numDIM = nrLED;
+}
+
+void oneClick2() {
+    uint8_t nrLED = 2;
+    if (serialmode == 1) Serial.println("oneClick");
+    //pierwszy raz po reset
+    if (dimmsetNow[nrLED] == 0 && dimmsetLast[nrLED] == 0) {
+        dimmsetNow[nrLED] = dimmsetMax[nrLED];
+        dimmsetLast[nrLED] = dimmsetNow[nrLED];
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    }
+    //wlaczamy na poprzedni poziom
+    else if (dimmsetNow[nrLED] == 0) {
+        dimmsetNow[nrLED] = dimmsetLast[nrLED];
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    }
+    //wylaczamy
+    else if (dimmsetNow[nrLED] > 0 && dimmsetLast[nrLED] <= dimmsetNow[nrLED]) {
+        dimmsetNow[nrLED] = 0;
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    }
+}
+void DoubleClick2() {
+    uint8_t nrLED = 2;
+    if (serialmode == 1) Serial.println("DoubleClick");
+    //wlaczamy na MAX
+    if (dimmsetNow[nrLED] > 0 && dimmsetLast[0] < (dimmsetMax[nrLED] + 1) && dimmsetNow[nrLED] < (dimmsetMax[nrLED] + 1)) {
+        dimmsetLast[nrLED] = dimmsetNow[nrLED];
+        dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    }
+    //wlaczamy na poprzedni poziom
+    else if (dimmsetNow[nrLED] == (dimmsetMax[nrLED] + 1) && dimmsetLast[nrLED] != (dimmsetMax[nrLED] + 1)) {
+        dimmsetNow[nrLED] = dimmsetLast[nrLED];
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    }
+    //na MAX z wylaczonego
+    else if (dimmsetNow[nrLED] == 0) {
+        dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
+        // jasnosc = dimmsetNow[nrLED];
+        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    }
+}
+void LongPressStart2() {
+    uint8_t nrLED = 2;
+    if (serialmode == 1) Serial.println("LongPressStart");
+    button_is_long_pressed = 1;
+    numDIM = nrLED;
 }
 void LongPressStop() {
     if (serialmode == 1) Serial.println("LongPressStop");
@@ -1194,65 +1333,60 @@ void LongPressStop() {
 }
 
 //<-- DLA dimmer
-void jasnoscLED() {
+void jasnoscLED(uint8_t nrLED, uint16_t jas) {
     uint16_t TMPjasnosc = 0, TMPjasnosc2 = 0, TMPjasnosc3 = 0;
 
-    if (dim1 == 1) {
-        if (SubDevID != 0) {
-            sendCAN(DevID, 3, dimmset_now, 0);
-        } else {
-            sendNRF(3, dimmset_now);
-        }
+    switch (nrLED) {
+        case 0:
+            sendNRF(3, jas);
+            sendCAN(DevID, 3, jas, 0);
 
-        //led[0].setupMax(jasnosc1);
-        eepromBUF[0] = readEEPROM(0);
-        eepromBUF[1] = readEEPROM(1);
-        TMPjasnosc = eepromBUF[0] * 256 + eepromBUF[1];  // odczyt zapisanej jasnosci
-        if ((jasnosc > 0 && jasnosc < dimmset_max - 1 && TMPjasnosc != jasnosc)) {
-            dim1 = 1;
-        } else {
-            dim1 = 0;
-        }
+            //led[0].setupMax(jas);
+            eepromBUF[0] = readEEPROM(0);
+            eepromBUF[1] = readEEPROM(1);
+            TMPjasnosc = eepromBUF[0] * 256 + eepromBUF[1];  // odczyt zapisanej jasnosci
+            if ((jas > 0 && jas < dimmsetMax[0] - 1 && TMPjasnosc != jas)) {
+                dim1 = 1;
+            } else {
+                dim1 = 0;
+            }
+            break;
+        case 1:
+            sendNRF(4, jas);
+            sendCAN(DevID, 4, jas, 0);
+
+            //led[1].setupMax(jas);
+            eepromBUF[6] = readEEPROM(6);
+            eepromBUF[7] = readEEPROM(7);
+            TMPjasnosc2 = eepromBUF[6] * 256 + eepromBUF[7];
+            if ((jas > 0 && jas < dimmsetMax[1] - 1 && TMPjasnosc2 != jas)) {
+                dim2 = 1;
+            } else {
+                dim2 = 0;
+            }
+            break;
+        case 2:
+
+            sendNRF(5, jas);
+            sendCAN(DevID, 5, jas, 0);
+
+            //led[2].setupMax(jas);
+            eepromBUF[8] = readEEPROM(8);
+            eepromBUF[9] = readEEPROM(9);
+            TMPjasnosc3 = eepromBUF[8] * 256 + eepromBUF[9];
+            if ((jas > 0 && jas < dimmsetMax[2] - 1 && TMPjasnosc3 != jas)) {
+                dim3 = 1;
+            } else {
+                dim3 = 0;
+            }
+            break;
+        case 4:
+            break;
     }
-
-    if (dim2 == 1) {
-        if (SubDevID != 0) {
-            sendCAN(DevID, 4, dimmset_now, 0);
-        } else {
-            sendNRF(4, dimmset_now);
-        }
-        //led[1].setupMax(jasnosc2);
-        eepromBUF[6] = readEEPROM(6);
-        eepromBUF[7] = readEEPROM(7);
-        TMPjasnosc2 = eepromBUF[6] * 256 + eepromBUF[7];
-        if ((jasnosc2 > 0 && jasnosc2 < dimm2set_max - 1 && TMPjasnosc2 != jasnosc2)) {
-            dim2 = 1;
-        } else {
-            dim2 = 0;
-        }
-    }
-
-    if (dim3 == 1) {
-        if (SubDevID != 0) {
-            sendCAN(DevID, 5, dimmset_now, 0);
-        } else {
-            sendNRF(5, dimmset_now);
-        }
-        //led[2].setupMax(jasnosc3);
-        eepromBUF[8] = readEEPROM(8);
-        eepromBUF[9] = readEEPROM(9);
-        TMPjasnosc3 = eepromBUF[8] * 256 + eepromBUF[9];
-        if ((jasnosc3 > 0 && jasnosc3 < dimm3set_max - 1 && TMPjasnosc3 != jasnosc3)) {
-            dim3 = 1;
-        } else {
-            dim3 = 0;
-        }
-    }
-
-    rysuj_jasnosc_na_lcd();
+    numDIM = nrLED;
+    rysuj_jasnosc_na_lcd(nrLED);
 
     if (dim1 == 1 || dim2 == 1 || dim3 == 1) {
-        //jasnosc_last = jasnosc;
         zapamietanyCzas1 = aktualnyCzas;
         zapiszweeprom = 1;
     }
@@ -1265,21 +1399,21 @@ void DimmWriteEEPROM() {  // zapisywanie z opoznienim aktualnej nastawy jasnosci
             if (aktualnyCzas - zapamietanyCzasEEPROM >= 6) {
                 dim1 = 0;
                 if (serialmode == 1) Serial.println("Zapisywanie w EEPROM DIM 1 ...");
-                writeEEPROM(0, jasnosc, 2);
+                writeEEPROM(0, dimmsetNow[0], 2);
             }
         }
         if (dim2 == 1) {
             if (aktualnyCzas - zapamietanyCzasEEPROM >= 6) {
                 dim2 = 0;
                 if (serialmode == 1) Serial.println("Zapisywanie w EEPROM DIM 2 ...");
-                writeEEPROM(6, jasnosc2, 2);
+                writeEEPROM(6, dimmsetNow[1], 2);
             }
         }
         if (dim3 == 1) {
             if (aktualnyCzas - zapamietanyCzasEEPROM >= 6) {
                 dim3 = 0;
                 if (serialmode == 1) Serial.println("Zapisywanie w EEPROM DIM 3 ...");
-                writeEEPROM(8, jasnosc3, 2);
+                writeEEPROM(8, dimmsetNow[2], 2);
             }
         }
         if (dim1 == 0 && dim2 == 0 && dim3 == 0) {
@@ -1350,13 +1484,13 @@ void SettingWriteEEPROM() {
     delay(6);
     writeEEPROM(31, ((RF24_rxAddr >> 8) & 0xFF), 1);
     delay(6);
-    writeEEPROM(29, dimm3set_max, 2);  // 29,30 BAJT dimm3set_max MSB
+    writeEEPROM(29, dimmsetMax[2], 2);  // 29,30 BAJT dimmsetMax[2] MSB
     delay(6);
-    writeEEPROM(27, dimm2set_max, 2);  // 27,28 BAJT dimm2set_max MSB
+    writeEEPROM(27, dimmsetMax[1], 2);  // 27,28 BAJT dimmsetMax[1] MSB
     delay(6);
     writeEEPROM(26, DimUpDownResolution, 1);
     delay(6);
-    writeEEPROM(24, dimmset_max, 2);
+    writeEEPROM(24, dimmsetMax[0], 2);
     delay(6);
     writeEEPROM(23, serialmode, 1);  // 23 BAJT serialmode
     delay(6);
@@ -1382,15 +1516,15 @@ void SettingWriteEEPROM() {
     delay(6);
     writeEEPROM(10, LightOnBoot, 1);  // 10 BAJT LightOnBoot
     delay(6);
-    writeEEPROM(8, jasnosc3, 2);  // 8,9 BAJT DIM3 jasnosc MSB
+    writeEEPROM(8, dimmsetNow[2], 2);  // 8,9 BAJT DIM3 jasnosc MSB
     delay(6);
-    writeEEPROM(6, jasnosc2, 2);  // 6,7 BAJT DIM2 jasnosc MSB
+    writeEEPROM(6, dimmsetNow[1], 2);  // 6,7 BAJT DIM2 jasnosc MSB
     delay(6);
     writeEEPROM(5, SubDevID, 1);  // 5 BAJT SubDevID
     delay(6);
     writeEEPROM(4, DevID, 1);  // 4 BAJT devID
     delay(6);
-    writeEEPROM(0, jasnosc, 2);  // 0,1 BAJT dim1 jasnosc MSB
+    writeEEPROM(0, dimmsetNow[0], 2);  // 0,1 BAJT dim1 jasnosc MSB
 
     if (serialmode == 1) Serial.println("... zakonczone. Reset ESP.");
     SettingSave = 0;
@@ -1412,13 +1546,13 @@ void FactoryWriteEEPROM() {
     delay(6);
     writeEEPROM(31, 0, 1);  // RF24_rxAddr
     delay(6);
-    writeEEPROM(29, 999, 2);  // 29,30 BAJT dimm3set_max MSB
+    writeEEPROM(29, 999, 2);  // 29,30 BAJT dimmsetMax[2] MSB
     delay(6);
-    writeEEPROM(27, 999, 2);  // 27,28 BAJT dimm2set_max MSB
+    writeEEPROM(27, 999, 2);  // 27,28 BAJT dimmsetMax[1] MSB
     delay(6);
     writeEEPROM(26, 20, 1);  // 26 DimUpDownResolution
     delay(6);
-    writeEEPROM(24, 999, 2);  // 24, 25 dimmset_max
+    writeEEPROM(24, 999, 2);  // 24, 25 dimmsetMax[0]
     delay(6);
     writeEEPROM(23, 1, 1);  // 23 BAJT serialmode
     delay(6);
@@ -1470,60 +1604,227 @@ byte readEEPROM(unsigned int eeaddress) {
     return rdata;
 }
 
-void rysuj_jasnosc_na_lcd() {
-    int val = map(dimmset_now, 0, dimmset_max, 0, 95);
-    if (val < 1 && dimmset_now > 0) {
-        val = 1;
-    }
-    display.fillRect(16, 2, 95, 11, BLACK);
-    display.fillRect(16, 2, val, 11, WHITE);
+void rysuj_jasnosc_na_lcd(uint16_t nrLED) {
+    if (dimActivNumb == 3) {
+        int val = map(dimmsetNow[0], 0, dimmsetMax[0], 0, 37);
+        if (val < 1 && dimmsetNow[0] > 0) {
+            val = 1;
+        }
+        display.fillRoundRect(2, 2, 37, 11, zaok, BLACK);
+        display.fillRoundRect(2, 2, val, 11, zaok, WHITE);
+        // napisy na pasku jasnosci
+        if (dimmsetNow[0] == 0) {
+            display.setCursor(5, 4);
+            display.println("O F F");
+        }
+        if (dimmsetNow[0] == 2) {
+            display.setCursor(5, 4);
+            display.println("M I N");
+        }
+        if (dimmsetNow[0] == (dimmsetMax[0] + 1)) {
+            display.setTextColor(BLACK);
+            display.setCursor(10, 4);
+            display.println("FULL");
+            display.setTextColor(WHITE);
+        }
+        if (dimmsetNow[0] == dimmsetMax[0]) {
+            display.setTextColor(BLACK);
+            display.setCursor(5, 4);
+            display.println("M A X");
+            display.setTextColor(WHITE);
+        }
 
-    // napisy na pasku jasnosci
-    if (dimmset_now == 0) {
-        display.setCursor(52, 4);
-        display.println("O F F");
-    }
-    if (dimmset_now == 2) {
-        display.setCursor(52, 4);
-        display.println("M I N");
-    }
-    if (dimmset_now == (dimmset_max + 1)) {
-        display.setTextColor(BLACK);
-        display.setCursor(43, 4);
-        display.println("F U L L");
-        display.setTextColor(WHITE);
-    }
-    if (dimmset_now == dimmset_max) {
-        display.setTextColor(BLACK);
-        display.setCursor(50, 4);
-        display.println("M A X");
-        display.setTextColor(WHITE);
-    }
+        int val1 = map(dimmsetNow[1], 0, dimmsetMax[1], 0, 37);
+        if (val1 < 1 && dimmsetNow[1] > 0) {
+            val1 = 1;
+        }
+        display.fillRoundRect(45, 2, 37, 11, zaok, BLACK);
+        display.fillRoundRect(45, 2, val1, 11, zaok, WHITE);
+        // napisy na pasku jasnosci
+        if (dimmsetNow[1] == 0) {
+            display.setCursor(50, 4);
+            display.println("O F F");
+        }
+        if (dimmsetNow[1] == 2) {
+            display.setCursor(50, 4);
+            display.println("M I N");
+        }
+        if (dimmsetNow[1] == (dimmsetMax[1] + 1)) {
+            display.setTextColor(BLACK);
+            display.setCursor(55, 4);
+            display.println("FULL");
+            display.setTextColor(WHITE);
+        }
+        if (dimmsetNow[1] == dimmsetMax[1]) {
+            display.setTextColor(BLACK);
+            display.setCursor(50, 4);
+            display.println("M A X");
+            display.setTextColor(WHITE);
+        }
 
+        int val2 = map(dimmsetNow[2], 0, dimmsetMax[2], 0, 37);
+        if (val2 < 1 && dimmsetNow[2] > 0) {
+            val2 = 1;
+        }
+        display.fillRoundRect(88, 2, 37, 11, zaok, BLACK);
+        display.fillRoundRect(88, 2, val2, 11, zaok, WHITE);
+        // napisy na pasku jasnosci
+        if (dimmsetNow[2] == 0) {
+            display.setCursor(93, 4);
+            display.println("O F F");
+        }
+        if (dimmsetNow[2] == 2) {
+            display.setCursor(93, 4);
+            display.println("M I N");
+        }
+        if (dimmsetNow[2] == (dimmsetMax[1] + 1)) {
+            display.setTextColor(BLACK);
+            display.setCursor(98, 4);
+            display.println("FULL");
+            display.setTextColor(WHITE);
+        }
+        if (dimmsetNow[2] == dimmsetMax[1]) {
+            display.setTextColor(BLACK);
+            display.setCursor(93, 4);
+            display.println("M A X");
+            display.setTextColor(WHITE);
+        }
+    } else if (dimActivNumb == 1) {
+        int val = map(dimmsetNow[nrLED], 0, dimmsetMax[nrLED], 0, 95);
+        if (val < 1 && dimmsetNow[nrLED] > 0) {
+            val = 1;
+        }
+        display.fillRect(16, 2, 95, 11, BLACK);
+        display.fillRect(16, 2, val, 11, WHITE);
+
+        // napisy na pasku jasnosci
+        if (dimmsetNow[nrLED] == 0) {
+            display.setCursor(52, 4);
+            display.println("O F F");
+        }
+        if (dimmsetNow[nrLED] == 2) {
+            display.setCursor(52, 4);
+            display.println("M I N");
+        }
+        if (dimmsetNow[nrLED] == (dimmsetMax[nrLED] + 1)) {
+            display.setTextColor(BLACK);
+            display.setCursor(43, 4);
+            display.println("F U L L");
+            display.setTextColor(WHITE);
+        }
+        if (dimmsetNow[nrLED] == dimmsetMax[nrLED]) {
+            display.setTextColor(BLACK);
+            display.setCursor(50, 4);
+            display.println("M A X");
+            display.setTextColor(WHITE);
+        }
+
+        if (poRestarcieTestSW1) {
+            display.setCursor(17, 4);
+            display.println("START:");
+        }  // wyswietlamy tylko przy pierwszym starcie lub restarcie procka
+        if (poRestarcieTestSW1 && dimmsetNow[nrLED] > 0) {
+            poRestarcieTestSW1 = 0;
+        }
+    } else if (dimActivNumb == 2) {
+        int val = map(dimmsetNow[0], 0, dimmsetMax[0], 0, 58);
+        if (val < 1 && dimmsetNow[0] > 0) {
+            val = 1;
+        }
+        display.fillRoundRect(2, 2, 58, 11, zaok, BLACK);
+        display.fillRoundRect(2, 2, val, 11, zaok, WHITE);
+        // napisy na pasku jasnosci
+        if (dimmsetNow[0] == 0) {
+            display.setCursor(5, 4);
+            display.println("O F F");
+        }
+        if (dimmsetNow[0] == 2) {
+            display.setCursor(5, 4);
+            display.println("M I N");
+        }
+        if (dimmsetNow[0] == (dimmsetMax[0] + 1)) {
+            display.setTextColor(BLACK);
+            display.setCursor(10, 4);
+            display.println("FULL");
+            display.setTextColor(WHITE);
+        }
+        if (dimmsetNow[0] == dimmsetMax[0]) {
+            display.setTextColor(BLACK);
+            display.setCursor(5, 4);
+            display.println("M A X");
+            display.setTextColor(WHITE);
+        }
+
+        int val1 = map(dimmsetNow[1], 0, dimmsetMax[1], 0, 58);
+        if (val1 < 1 && dimmsetNow[1] > 0) {
+            val1 = 1;
+        }
+        display.fillRoundRect(66, 2, 58, 11, zaok, BLACK);
+        display.fillRoundRect(66, 2, val1, 11, zaok, WHITE);
+        // napisy na pasku jasnosci
+        if (dimmsetNow[1] == 0) {
+            display.setCursor(71, 4);  //+5
+            display.println("O F F");
+        }
+        if (dimmsetNow[1] == 2) {
+            display.setCursor(71, 4);
+            display.println("M I N");
+        }
+        if (dimmsetNow[1] == (dimmsetMax[1] + 1)) {
+            display.setTextColor(BLACK);
+            display.setCursor(76, 4);
+            display.println("FULL");
+            display.setTextColor(WHITE);
+        }
+        if (dimmsetNow[1] == dimmsetMax[1]) {
+            display.setTextColor(BLACK);
+            display.setCursor(71, 4);
+            display.println("M A X");
+            display.setTextColor(WHITE);
+        }
+    }
     if (poRestarcieTestSW1) {
-        display.setCursor(17, 4);
-        display.println("START:");
+        display.setCursor(5, 4);
+        display.println("|");
     }  // wyswietlamy tylko przy pierwszym starcie lub restarcie procka
-    if (poRestarcieTestSW1 && dimmset_now > 0) {
+    if (poRestarcieTestSW1 && dimmsetNow[nrLED] > 0) {
         poRestarcieTestSW1 = 0;
     }
-
     display.display();
 }
 
 void rysujemy_na_lcd() {
+    if (checkOne1 == 1) {
+        if (dimmsetLast[0] != 0) {
+            dimActivNumb++;
+        }
+        if (dimmsetLast[1] != 0) {
+            dimActivNumb++;
+        }
+        if (dimmsetLast[2] != 0) {
+            dimActivNumb++;
+        }
+        checkOne1 = 0;
+    }
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(WHITE);
-
-    display.drawRoundRect(14, 0, 99, 15, 2, WHITE);
-    display.drawCircle(5, 7, 5, WHITE);
-    display.drawLine(2, 4, 8, 10, WHITE);
-    display.drawLine(2, 10, 8, 4, WHITE);
-    display.fillCircle(122, 7, 5, WHITE);
-    display.drawLine(119, 4, 125, 10, BLACK);
-    display.drawLine(119, 10, 125, 4, BLACK);
-
+    if (dimActivNumb == 3) {
+        display.drawRoundRect(0, 0, 41, 15, zaok, WHITE);
+        display.drawRoundRect(43, 0, 41, 15, zaok, WHITE);
+        display.drawRoundRect(86, 0, 41, 15, zaok, WHITE);
+    } else if (dimActivNumb == 1) {
+        display.drawRoundRect(14, 0, 99, 15, 2, WHITE);
+        display.drawCircle(5, 7, 5, WHITE);
+        display.drawLine(2, 4, 8, 10, WHITE);
+        display.drawLine(2, 10, 8, 4, WHITE);
+        display.fillCircle(122, 7, 5, WHITE);
+        display.drawLine(119, 4, 125, 10, BLACK);
+        display.drawLine(119, 10, 125, 4, BLACK);
+    } else if (dimActivNumb == 2) {
+        display.drawRoundRect(0, 0, 62, 15, zaok, WHITE);
+        display.drawRoundRect(64, 0, 62, 15, zaok, WHITE);
+    }
     aktualizuj_timestr();
     display.setCursor(0, 16);
     display.print(timestr);
@@ -1576,7 +1877,7 @@ void rysujemy_na_lcd() {
 
         PokazSW1NaDisplay(0);
     }
-    rysuj_jasnosc_na_lcd();  //w tej funkcji na koncu jest display.display();
+    rysuj_jasnosc_na_lcd(numDIM);  //w tej funkcji na koncu jest display.display();
 }
 
 void aktualizuj_timestr() {
@@ -1756,12 +2057,12 @@ void relays(uint8_t n) {
     }
 }
 void relaydimonoff() {
-    if ((dimmset_now > 0 || dimmset_now2 > 0 || dimmset_now3 > 0) && sp[0] == 0) {
-        // if (dimmset_now > 0 && sp[0] == 0) {
+    if ((dimmsetNow[0] > 0 || dimmsetNow[1] > 0 || dimmsetNow[2] > 0) && sp[0] == 0) {
+        // if (dimmsetNow[0] > 0 && sp[0] == 0) {
         relays(1);
         roff = 1;
-    } else if (roff == 1 && dimmset_now == 0 && dimmset_now2 == 0 && dimmset_now3 == 0 && sp[0] == 1) {
-        // } else if (roff == 1 && dimmset_now == 0 && sp[0] == 1) {
+    } else if (roff == 1 && dimmsetNow[0] == 0 && dimmsetNow[1] == 0 && dimmsetNow[2] == 0 && sp[0] == 1) {
+        // } else if (roff == 1 && dimmsetNow[nrLED] == 0 && sp[0] == 1) {
         zapczas = aktualnyCzas;
         roff = 0;
     } else if (roff == 0 && (aktualnyCzas - zapczas >= (relayToff1 * 1000))) {  //relayToff
@@ -1770,6 +2071,7 @@ void relaydimonoff() {
     }
 }
 
+// napisac na oled 3 jasnosci. zrobic warunek jesli >0
 // wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
 //  WiFi.macAddress() jako nazwa urzadzenia?`1`1
