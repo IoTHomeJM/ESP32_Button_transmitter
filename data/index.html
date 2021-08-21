@@ -12118,7 +12118,7 @@
                                 </span>
                             </div>
                             <div class="contact-form__input-group">
-                                <label class="contact-form__label" for="28" title="Ustawienie ostatnio zapamietanej jasnosci do eeprom">Jasnosc1</label>
+                                <label class="contact-form__label" for="28" title="Ustawienie ostatnio zapamietanej jasnosci zapisuje do eeprom">Jasnosc1</label>
                                 <span class="float-sm-right"><label class="contact-form__label" for="29" title="Ustawia maksymalna wartosc rozjasniania.">dimmset_max</label></span></br>
                                 <span class="p-4">
                                     <input class="contact-form__input contact-form__input--text" id="28" name="jasnosc1" type="number" min="0" max="1023" value="0" />
@@ -12129,7 +12129,7 @@
                             </div>
 
                             <div class="contact-form__input-group">
-                                <label class="contact-form__label" for="30" title="Ustawienie ostatnio zapamietanej jasnosci do eeprom">Jasnosc2</label>
+                                <label class="contact-form__label" for="30" title="Ustawienie ostatnio zapamietanej jasnosci zapisuje do eeprom">Jasnosc2</label>
                                 <span class="float-sm-right"><label class="contact-form__label" for="33" title="Ustawia maksymalna wartosc rozjasniania.">dimm2set_max</label></span></br>
                                 <span class="p-4">
                                     <input class="contact-form__input contact-form__input--text" id="30" name="jasnosc2" type="number" min="0" max="1023" value="0" />
@@ -12140,7 +12140,7 @@
                             </div>
 
                             <div class="contact-form__input-group">
-                                <label class="contact-form__label" for="31" title="Ustawienie ostatnio zapamietanej jasnosci do eeprom">Jasnosc3</label>
+                                <label class="contact-form__label" for="31" title="Ustawienie ostatnio zapamietanej jasnosci zapisuje do eeprom">Jasnosc3</label>
                                 <span class="float-sm-right"><label class="contact-form__label" for="34" title="Ustawia maksymalna wartosc rozjasniania.">dimm3set_max</label></span></br>
                                 <span class="p-4">
                                     <input class="contact-form__input contact-form__input--text" id="31" name="jasnosc3" type="number" min="0" max="1023" value="0" />
@@ -12305,6 +12305,8 @@
                     } else {
                         $("#41").prop("checked", true)
                     }
+                     //$("#").val(JSON.stringify(res[0].frameID));
+                    //$("#").val(JSON.stringify(res[0].celsius));
 
                     res.forEach(el => {
                         //$('.user-list').append(`${el.name} : ${el.email}`);

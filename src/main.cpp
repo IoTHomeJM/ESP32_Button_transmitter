@@ -166,6 +166,11 @@ void setup() {
     //--> EEPROM
     Wire.begin(21, 22);  // sda, scl
     Wire.setClock(4000000);
+    // nowy modul musi zapisac sobie odpowiednio eeprom
+    // if (FactorySet == 1) {
+    // delay(1000);
+    //         FactoryWriteEEPROM();
+    // }
     for (int i = 0; i < 64; ++i) {
         eepromBUF[i] = readEEPROM(i);
     }  // read 32 byte eeprom
@@ -271,6 +276,8 @@ void setup() {
         Serial.println(ssid);
         Serial.print("password: ");
         Serial.println(password);
+        Serial.print("wifiAPon: ");
+        Serial.println(wifiAPon);
     }
     //<-- EEPROM
     /*
@@ -457,17 +464,6 @@ void setup() {
         server.on("/login", HTTP_POST, handleLogin);  // Call the 'handleLogin' function when a POST request is made to URI "/login"
 
         server.onNotFound(handle_NotFound);
-        // delay(2000);  // !!
-        // server.begin();  // !! powinno byc po polaczeniu wifi?
-        // if (serialmode == 1) Serial.println("HTTP server started");
-        // !!
-        // if (strcmp(ssid, "ssid") != 0) {
-        //     WIFIconfigured = 1;
-        // }
-        // if (serialmode == 1) {
-        //     Serial.print("WIFIconfigured: ");
-        //     Serial.println(WIFIconfigured);
-        // }
     }
     //<-- server
 
@@ -501,23 +497,20 @@ void loop() {
     aktualnyCzas = millis();
     timer.run();
     LightDimmerESP32::update();
-    readCAN();
-    readNRF();
-    relaydimonoff();
-    if (button_is_long_pressed == 1) {
-        zmiana_poziomu_jasnosci(numDIM);
-    }
-
     if (SW1TouchActive == 1) {
         sprawdzSW1Touch();
-    }
-    if (SW1TouchActive == 1) {
         button.tick(SW1TouchPressed);
     } else {
         button.tick();
         button1.tick();
         button2.tick();
         button3.tick();
+    }
+    readCAN();
+    readNRF();
+    relaydimonoff();
+    if (button_is_long_pressed == 1) {
+        zmiana_poziomu_jasnosci(numDIM);
     }
 
     if (OTAActive == 1) {
@@ -532,7 +525,6 @@ void loop() {
     if (zapiszweeprom == 1) {
         DimmWriteEEPROM();
     }  // zapisywanie z opoznieniem aktualnej nastawy jasnosci LED do EEPROM
-    // wifiSTAcheck();
 }
 ////////////////////////////
 // KONIEC LOOP ////////////////////
@@ -916,7 +908,7 @@ void wificlose() {
 }
 void wifiapstart() {
     if (serialmode == 1) {
-        Serial.println("Laczenie wifi AP");
+        Serial.print("Laczenie wifi AP ");
     }
     timer.disable(timerid1);
     WiFi.persistent(false);
@@ -934,8 +926,12 @@ void wifiapstart() {
     server.begin();
     zapamietanyCzasOLED = aktualnyCzas;
     SMSbuf = "APmode : 192.168.1.100";
+    wifiAPconnected = 1;
 }
 void wifiSTAstart() {
+    if (serialmode == 1) {
+        Serial.print("wifiSTAstart ");
+    }
     WiFi.persistent(false);
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
@@ -947,20 +943,21 @@ void wifiSTAstart() {
 
     if ((wifiSTAonCN >= 5) && (wifiAPon == 1)) {
         if (serialmode == 1) {
-            Serial.println("brak polaczenia STA mode");
+            Serial.print(" Brak polaczenia STA mode. ");
         }
         wifiSTAonCN = 0;
         wifiapstart();
     }
 }
 void wifiSTAconnecting() {
-    if (WiFi.status() != WL_CONNECTED) {
+    if ((WiFi.status() != WL_CONNECTED) && (wifiAPconnected == 0)) {
         wifiSTAon = 0;
         wifiSTAonCN++;
         if (serialmode == 1) {
             Serial.print("Laczenie do WIFI - STA mode. ");
             Serial.println(" Ilosc prob: " + String(wifiSTAonCN) + "");
         }
+        wifiSTAstart();
         if (wifiSTAonCN >= 5) {
             wifiSTAonCN = 0;
             timer.disable(timerid2);
@@ -968,14 +965,13 @@ void wifiSTAconnecting() {
                 Serial.println("timerid2 - disable ");
             }
         }
-        wifiSTAstart();
 
     } else {
         wifiSTAcheck();
     }
 }
 void wifiSTAcheck() {
-    if (WiFi.status() != WL_CONNECTED) {
+    if ((WiFi.status() != WL_CONNECTED) && (wifiAPconnected == 0)) {
         if (serialmode == 1) {
             Serial.println("Brak polaczenia WIFI - STA mode. ");
         }
@@ -1001,8 +997,12 @@ void wifiSTAcheck() {
             }
         }
         if (serialmode == 1) {
-            Serial.print("WiFi OK - IP addres: ");
-            Serial.println(WiFi.localIP());
+            if (wifiAPconnected == 1) {
+                Serial.print("WiFi AP OK. 192.168.1.100");
+            } else {
+                Serial.print("WiFi STA OK - IP addres: ");
+                Serial.println(WiFi.localIP());
+            }
         }
     }
 }
@@ -1046,7 +1046,6 @@ void konfiguracja() {
     strcpy(ssid, server.arg("SSID").c_str());
     strcpy(password, server.arg("pass").c_str());
     wifiAPon = server.arg("wifiAPon").toInt();
-    // a = server.arg("a").toInt();
     create_json();
     server.send(200, "application/json", json);
 }
@@ -1089,7 +1088,6 @@ void create_json() {
 
            ",\"SSID\":\"" + String(ssid) +
            "\",\"pass\":\"" + String(password) +
-
            "\"},{\"frameID\":" + String(frameID) +
            ",\"celsius\":" + String(celsius) + "}]";
 }
@@ -1473,11 +1471,12 @@ void SettingWriteEEPROM() {
     if (serialmode == 1) Serial.print("Zapisywanie ustawien...");
 
     // writeEEPROM(37, wifiAPon, 1);
-    // delay(6);
+    delay(6);
     writeEEPROM(36, wifiAPon, 1);
     delay(6);
     writeStringToEEPROM(2033, password);
     writeStringToEEPROM(2000, ssid);
+    delay(6);
     writeEEPROM(34, relayToff2, 2);  //34,35
     delay(6);
     writeEEPROM(32, relayToff1, 2);  // 32, 33
@@ -2065,13 +2064,13 @@ void relaydimonoff() {
         // } else if (roff == 1 && dimmsetNow[nrLED] == 0 && sp[0] == 1) {
         zapczas = aktualnyCzas;
         roff = 0;
-    } else if (roff == 0 && (aktualnyCzas - zapczas >= (relayToff1 * 1000))) {  //relayToff
+    } else if (roff == 0 && (aktualnyCzas - zapczas >= (relayToff1 * 1000))) {
+        //relayToff
         roff = 1;
         relays(1);
     }
 }
 
-// napisac na oled 3 jasnosci. zrobic warunek jesli >0
 // wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
 //  WiFi.macAddress() jako nazwa urzadzenia?`1`1
@@ -2081,7 +2080,7 @@ void relaydimonoff() {
 // napisac funkcje sprawdzajaca saldo konta jesli jest to prepaid-opcja zaznaczenia na www, wpisania kodu sprawdzajacego saldo
 // napisac synchronizacje czasu przez CAN wysylajace do wszystkich modołów z mastera (255).
 // napisac restart modulu GSM co x czasu
-// napisac obsluge wielu przyciskow. napewno jeszcze 2 do sterowanie dim2 dim3.
+
 // napisac mozliwosc nazwy urzadzenia/pomieszczenia
 // napisac synchronizacje aktualnej godziny przez www
 // gdy ustawienia fabryczne to jest wlaczone wifi AP
