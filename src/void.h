@@ -55,3 +55,5 @@ void wifiSTAcheck();
 void writeStringToEEPROM(int adres, const String& ToWrite);
 String readStringFromEEPROM(int addrOffset);
 void wifiSTAconnecting();
+void buttonWIFIenable();
+void buttonWIFIdisable();

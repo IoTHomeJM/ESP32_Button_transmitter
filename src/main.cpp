@@ -73,10 +73,12 @@ char* passwordAP = strdup("1234567890");  // Enter Password here
 //char* password = strdup("1234567890");
 char* ssid = strdup("NET");
 char* password = strdup("Janek1@$Eva");
+char* ssidF = strdup("JLU");
+char* passwordF = strdup("1234567890");
 
 String hostname = "SWModule";
 WebServer server(80);
-bool wifiSTAon = 0, wifiAPon = 1;
+bool wifiSTAon = 0, wifiAPon = 1, buttonWIFIactived = 0, wifiAPconnected = 0;
 uint8_t wifiSTAonCN = 0;
 //<--server
 
@@ -130,7 +132,7 @@ OneButton button3(SW4pin, true);
 bool button_is_long_pressed = 0;
 bool dimming_up = 0;
 bool poRestarcieTestSW1 = 1;
-
+uint8_t bWIFIenable = 0;
 char timestr[10] = "--:--:--";
 
 boolean SW1TouchEnable = 0;  // aktywacja funkcji przycisku dotyku
@@ -161,7 +163,7 @@ uint16_t relayToff1 = 5;                       // czas opoznienia wylaczenia prz
 uint16_t relayToff2 = 5;
 bool roff = 1;
 
-int timerid1, timerid2;
+int timerWifiSTAcheck = 0, timerWifiSTACon = 0, timerServerON = 0, timerbuttonWIFIdisable = 0;
 void setup() {
     //--> EEPROM
     Wire.begin(21, 22);  // sda, scl
@@ -390,18 +392,6 @@ void setup() {
     radio.startListening();
     if (serialmode == 1) radio.printDetails();  // wyswietlamy info o parametrach NRF
 
-    // inicjalizacja czujnika temperatury DS18B20 tj. odczyt jego adresu
-    ds.search(DallasAddr);  // NIE WIEM DLACZEGO ALE TRZEBA WYWOLAC 2 RAZY
-    if (!ds.search(DallasAddr)) {
-        CzyJestCzujnikTemperaury = 0;
-    }
-    if (OneWire::crc8(DallasAddr, 7) != DallasAddr[7]) {
-        CzyJestCzujnikTemperaury = 0;
-    }
-    if (DallasAddr[0] != 0x28) {
-        CzyJestCzujnikTemperaury = 0;
-    }
-
     if (serialmode == 2) {
         int cz = 0;
         while (cz < 20) {
@@ -444,39 +434,38 @@ void setup() {
 
     // setTime(1586365689); // ustawia zegarek
 
-    //--> server www
     if (ServerActive == 1) {
         // wifiapstart();
         wifiSTAstart();
-        server.on("/headers", []() {  // wysyla naglowki
-            server.sendHeader("Access-Control-Allow-Origin", "*");
-            server.sendHeader("access-control-allow-credentials", "true");
-            server.sendHeader("access-control-allow-headers", "x-requested-with");
-            server.sendHeader("access-control-allow-methods", "GET,OPTIONS");
-            server.send(200, "text/plain", "OK");
-        });
-        server.on("/after_loading", []() { create_json(); server.send(200, "application/json", json); });
-        server.on("/favicon.ico", []() { server.send(200, "text/plain", "OK"); });
-        server.on("/config", HTTP_POST, konfiguracja);
-        server.on("/", index_html);
-        server.on("/index.html", index_html);
-        server.on("/tst", HTTP_GET, handleRoot);      // Call the 'handleRoot' function when a client requests URI "/"
-        server.on("/login", HTTP_POST, handleLogin);  // Call the 'handleLogin' function when a POST request is made to URI "/login"
-
-        server.onNotFound(handle_NotFound);
     }
-    //<-- server
 
     //// TIMERY ////
     ///////////////
 
+    timerbuttonWIFIdisable = timer.setInterval(240000, buttonWIFIdisable);  //za 10 min wylaczy 600000
     timer.setInterval(1000, rysujemy_na_lcd);
     timer.setInterval(2000, InicjacjaOdczytTemperatury);
-    if (ServerActive == 1) {
-        timerid1 = timer.setInterval(60000, wifiSTAcheck);  // co 5min 300000
-        timer.setInterval(150, serverON);                   //1500
-        // timerid2 = timer.setTimer(6000, wifiSTAconnecting, 5);
-        timerid2 = timer.setInterval(6000, wifiSTAconnecting);
+    timerWifiSTAcheck = timer.setInterval(60000, wifiSTAcheck);  // co 5min 300000
+    timerServerON = timer.setInterval(150, serverON);            //1500
+    timerWifiSTACon = timer.setInterval(6000, wifiSTAconnecting);
+
+    // inicjalizacja czujnika temperatury DS18B20 tj. odczyt jego adresu
+    ds.search(DallasAddr);  // NIE WIEM DLACZEGO ALE TRZEBA WYWOLAC 2 RAZY
+    if (!ds.search(DallasAddr)) {
+        CzyJestCzujnikTemperaury = 0;
+    }
+    if (OneWire::crc8(DallasAddr, 7) != DallasAddr[7]) {
+        CzyJestCzujnikTemperaury = 0;
+    }
+    if (DallasAddr[0] != 0x28) {
+        CzyJestCzujnikTemperaury = 0;
+    }
+
+    timer.disable(timerbuttonWIFIdisable);
+    if (ServerActive != 1) {
+        timer.disable(timerWifiSTAcheck);
+        timer.disable(timerServerON);
+        timer.disable(timerWifiSTACon);
     }
     if (gsminit == 1) {
         timer.setInterval(500, readSMS);
@@ -910,7 +899,7 @@ void wifiapstart() {
     if (serialmode == 1) {
         Serial.print("Laczenie wifi AP ");
     }
-    timer.disable(timerid1);
+    timer.disable(timerWifiSTAcheck);
     WiFi.persistent(false);
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
@@ -921,6 +910,7 @@ void wifiapstart() {
     IPAddress gateway(192, 168, 1, 1);
     IPAddress subnet(255, 255, 255, 0);
 
+    hostname += String(DevID);
     WiFi.softAPConfig(local_ip, gateway, subnet);
     WiFi.softAP(ssidAP, passwordAP);
     server.begin();
@@ -932,6 +922,9 @@ void wifiSTAstart() {
     if (serialmode == 1) {
         Serial.print("wifiSTAstart ");
     }
+    if (ServerActive != 1) {
+        timer.enable(timerWifiSTAcheck);
+    }
     WiFi.persistent(false);
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
@@ -939,7 +932,11 @@ void wifiSTAstart() {
     WiFi.mode(WIFI_STA);
     hostname += String(DevID);
     WiFi.setHostname(hostname.c_str());
-    WiFi.begin(ssid, password);
+    if (wifiSTAonCN == 4) {
+        WiFi.begin(ssidF, passwordF);
+    } else {
+        WiFi.begin(ssid, password);
+    }
 
     if ((wifiSTAonCN >= 5) && (wifiAPon == 1)) {
         if (serialmode == 1) {
@@ -960,9 +957,9 @@ void wifiSTAconnecting() {
         wifiSTAstart();
         if (wifiSTAonCN >= 5) {
             wifiSTAonCN = 0;
-            timer.disable(timerid2);
+            timer.disable(timerWifiSTACon);
             if (serialmode == 1) {
-                Serial.println("timerid2 - disable ");
+                Serial.println("timerWifiSTACon - disable ");
             }
         }
 
@@ -976,23 +973,45 @@ void wifiSTAcheck() {
             Serial.println("Brak polaczenia WIFI - STA mode. ");
         }
         wifiSTAonCN = 0;
-        timer.enable(timerid2);
-        timer.restartTimer(timerid2);
+        timer.enable(timerWifiSTACon);
+        timer.restartTimer(timerWifiSTACon);
         if (serialmode == 1) {
-            Serial.println("timerid2 - enable ");
+            Serial.println("timerWifiSTACon - enable ");
         }
     } else {
         wifiSTAonCN = 0;
-        if (wifiSTAon == 0) {
-            wifiSTAon = 1;
-            timer.disable(timerid2);  // wifiSTAcheck
+        if ((wifiSTAon == 0) || (wifiAPconnected == 1)) {
+            if (wifiAPconnected != 1) {
+                wifiSTAon = 1;
+            }
+            timer.disable(timerWifiSTACon);
             zapamietanyCzasOLED = aktualnyCzas;
             SMSbuf = "IP: " + WiFi.localIP().toString() + "";
+
+            server.on("/headers", []() {  // wysyla naglowki
+                server.sendHeader("Access-Control-Allow-Origin", "*");
+                server.sendHeader("access-control-allow-credentials", "true");
+                server.sendHeader("access-control-allow-headers", "x-requested-with");
+                server.sendHeader("access-control-allow-methods", "GET,OPTIONS");
+                server.send(200, "text/plain", "OK");
+            });
+            server.on("/after_loading", []() { create_json(); server.send(200, "application/json", json); });
+            server.on("/favicon.ico", []() { server.send(200, "text/plain", "OK"); });
+            server.on("/config", HTTP_POST, konfiguracja);
+            server.on("/", index_html);
+            server.on("/index.html", index_html);
+            server.on("/tst", HTTP_GET, handleRoot);      // Call the 'handleRoot' function when a client requests URI "/"
+            server.on("/login", HTTP_POST, handleLogin);  // Call the 'handleLogin' function when a POST request is made to URI "/login"
+
+            server.onNotFound(handle_NotFound);
             server.begin();
+            timer.enable(timerServerON);
+            timer.restartTimer(timerServerON);
+
             if (serialmode == 1) {
                 Serial.println("HTTP server started");
             }
-            if (OTAActive == 1) {
+            if ((OTAActive == 1) || (buttonWIFIactived == 1)) {
                 EnableOTA();
             }
         }
@@ -1006,7 +1025,19 @@ void wifiSTAcheck() {
         }
     }
 }
-
+void buttonWIFIenable() {
+    if (serialmode == 1) {
+                Serial.println("buttonWIFIenable");
+            }
+    timer.enable(timerbuttonWIFIdisable);
+    timer.restartTimer(timerbuttonWIFIdisable);
+    wifiSTAstart();
+    buttonWIFIactived = 1;
+}
+void buttonWIFIdisable() {
+    timer.disable(timerbuttonWIFIdisable);
+    wificlose();
+}
 void konfiguracja() {
     DevID = server.arg("DevID").toInt();
     SubDevID = server.arg("SubDevID").toInt();
@@ -1161,6 +1192,11 @@ void zmiana_poziomu_jasnosci(uint16_t nrLED) {
 }
 
 void oneClick0() {
+    if (bWIFIenable == 5) {
+        buttonWIFIenable();
+    } else {
+        bWIFIenable = 1;
+    }
     uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("oneClick");
     //pierwszy raz po reset
@@ -1184,6 +1220,9 @@ void oneClick0() {
     }
 }
 void DoubleClick0() {
+    if (bWIFIenable == 1) {
+        bWIFIenable = 3;
+    }
     uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("DoubleClick");
     //wlaczamy na MAX
@@ -1208,6 +1247,9 @@ void DoubleClick0() {
 }
 
 void LongPressStart0() {
+    if (bWIFIenable == 3) {
+        bWIFIenable = 5;
+    }
     uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("LongPressStart");
     button_is_long_pressed = 1;
@@ -2070,7 +2112,7 @@ void relaydimonoff() {
         relays(1);
     }
 }
-
+// za pomoca kombinacji przyciskow wlaczamy wifi OTA na x czasu.
 // wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
 //  WiFi.macAddress() jako nazwa urzadzenia?`1`1
@@ -2084,12 +2126,14 @@ void relaydimonoff() {
 // napisac mozliwosc nazwy urzadzenia/pomieszczenia
 // napisac synchronizacje aktualnej godziny przez www
 // gdy ustawienia fabryczne to jest wlaczone wifi AP
-// za pomoca przycisku mozliwosc wylaczenia/wlaczenia ota. gdy wylaczone wifi to wlacza wifi i pozniej wylacza, gdy wlaczone wifi to wylacza tylko ota
+
 //
-// **
+// *****
+// trzeba byc w katalogu projektu
 //projekt  pio run --target upload --upload-port 192.168.43.47
 //fs       pio run --target uploadfs --upload-port 192.168.43.47
 
 // *** KOMITY ***
+// poprawa wifi. sekwencja: oneClick0 - DoubleClick0 - LongPressStart0 - oneClick0 wlacza WIFI OTA na 4 min.
 // WWW dodano zmienna wifiAPon - po zaniku lokalnego wifi-STA, bedzie probowal sie ponownie polaczyc. Jesli nie uda sie to wlaczy AP mode lub bedzie probowal nadal laczyc co 5 min.
-// WWW - zapamietanie ssid, pass do eeprom, po nieudanej probie logowania do sieci lokalnej wlacza sie AP mode. Sprawdzanie polaczenia wifi co 5min. Jesli bedzie rozlaczene to bedzie probowac laczyc x co x czas. Poprawa OTA,
+// WWW - zapamietanie ssid, pass do eeprom, po nieudanej probie logowania do sieci lokalnej wlacza sie AP mode. Sprawdzanie polaczenia wifi co 5min. Jesli bedzie rozlaczene to bedzie probowac laczyc x co x czas. Poprawa OTA
