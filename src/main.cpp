@@ -164,6 +164,7 @@ uint16_t relayToff2 = 5;
 bool roff = 1;
 
 int timerWifiSTAcheck = 0, timerWifiSTACon = 0, timerServerON = 0, timerbuttonWIFIdisable = 0;
+
 void setup() {
     //--> EEPROM
     Wire.begin(21, 22);  // sda, scl
@@ -442,7 +443,7 @@ void setup() {
     //// TIMERY ////
     ///////////////
 
-    timerbuttonWIFIdisable = timer.setInterval(240000, buttonWIFIdisable);  //za 10 min wylaczy 600000
+    timerbuttonWIFIdisable = timer.setInterval(600000, buttonWIFIdisable);  //za 10 min
     timer.setInterval(1000, rysujemy_na_lcd);
     timer.setInterval(2000, InicjacjaOdczytTemperatury);
     timerWifiSTAcheck = timer.setInterval(60000, wifiSTAcheck);  // co 5min 300000
@@ -892,6 +893,23 @@ void sendCAN(uint8_t toID, uint8_t fnID, uint32_t fndata, uint32_t fndata2) {
 void wificlose() {
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
+    timer.disable(timerWifiSTAcheck);
+    timer.disable(timerWifiSTACon);
+    timer.disable(timerServerON);
+    wifiAPconnected = 0;
+    wifiSTAonCN = 0;
+    wifiSTAon = 0;
+    ArduinoOTA.end();
+    server.stop();
+    if (serialmode == 1) {
+        Serial.println("WiFi OTA wylaczone. ");
+        Serial.print("wifiAPconnected: ");
+        Serial.println(wifiAPconnected);
+        Serial.print("wifiSTAonCN: ");
+        Serial.println(wifiSTAonCN);
+        Serial.print("wifiSTAon: ");
+        Serial.println(wifiSTAon);
+    }
     // delay(100);
     // ESP.restart();
 }
@@ -914,8 +932,6 @@ void wifiapstart() {
     WiFi.softAPConfig(local_ip, gateway, subnet);
     WiFi.softAP(ssidAP, passwordAP);
     server.begin();
-    zapamietanyCzasOLED = aktualnyCzas;
-    SMSbuf = "APmode : 192.168.1.100";
     wifiAPconnected = 1;
 }
 void wifiSTAstart() {
@@ -924,6 +940,7 @@ void wifiSTAstart() {
     }
     if (ServerActive != 1) {
         timer.enable(timerWifiSTAcheck);
+        timer.enable(timerWifiSTACon);
     }
     WiFi.persistent(false);
     WiFi.disconnect();
@@ -985,9 +1002,13 @@ void wifiSTAcheck() {
                 wifiSTAon = 1;
             }
             timer.disable(timerWifiSTACon);
-            zapamietanyCzasOLED = aktualnyCzas;
-            SMSbuf = "IP: " + WiFi.localIP().toString() + "";
-
+            if (wifiAPconnected == 1) {
+                zapamietanyCzasOLED = aktualnyCzas;
+                SMSbuf = "IP: 192.168.1.100";
+            } else {
+                zapamietanyCzasOLED = aktualnyCzas;
+                SMSbuf = "IP: " + WiFi.localIP().toString() + "";
+            }
             server.on("/headers", []() {  // wysyla naglowki
                 server.sendHeader("Access-Control-Allow-Origin", "*");
                 server.sendHeader("access-control-allow-credentials", "true");
@@ -1017,7 +1038,7 @@ void wifiSTAcheck() {
         }
         if (serialmode == 1) {
             if (wifiAPconnected == 1) {
-                Serial.print("WiFi AP OK. 192.168.1.100");
+                Serial.println("WiFi AP OK. 192.168.1.100");
             } else {
                 Serial.print("WiFi STA OK - IP addres: ");
                 Serial.println(WiFi.localIP());
@@ -1026,6 +1047,7 @@ void wifiSTAcheck() {
     }
 }
 void buttonWIFIenable() {
+    bWIFIenable = 0;
     if (serialmode == 1) {
         Serial.println("buttonWIFIenable");
     }
@@ -1036,6 +1058,7 @@ void buttonWIFIenable() {
 }
 void buttonWIFIdisable() {
     timer.disable(timerbuttonWIFIdisable);
+    buttonWIFIactived = 0;
     wificlose();
 }
 void konfiguracja() {
@@ -1199,7 +1222,7 @@ void oneClick0() {
     }
     if (serialmode == 1) {
         Serial.print("bWIFIenable: ");
-        Serial.println("bWIFIenable");
+        Serial.println(bWIFIenable);
     }
     uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("oneClick");
@@ -1229,7 +1252,7 @@ void DoubleClick0() {
     }
     if (serialmode == 1) {
         Serial.print("bWIFIenable: ");
-        Serial.println("bWIFIenable");
+        Serial.println(bWIFIenable);
     }
     uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("DoubleClick");
@@ -1260,7 +1283,7 @@ void LongPressStart0() {
     }
     if (serialmode == 1) {
         Serial.print("bWIFIenable: ");
-        Serial.println("bWIFIenable");
+        Serial.println(bWIFIenable);
     }
     uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("LongPressStart");
@@ -1927,6 +1950,8 @@ void rysujemy_na_lcd() {
         display.print(" C");
         display.setFont();
 
+        display.fillCircle(122, 54, 5, WHITE);
+
         PokazSW1NaDisplay(0);
     }
     rysuj_jasnosc_na_lcd(numDIM);  //w tej funkcji na koncu jest display.display();
@@ -2121,9 +2146,9 @@ void relaydimonoff() {
         //relayToff
         roff = 1;
         relays(1);
-        //test git
     }
 }
+// kontrolka wifi OTA na oled.
 // wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
 //  WiFi.macAddress() jako nazwa urzadzenia?`1`1
