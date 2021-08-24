@@ -892,8 +892,8 @@ void sendCAN(uint8_t toID, uint8_t fnID, uint32_t fndata, uint32_t fndata2) {
 void wificlose() {
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
-    delay(100);
-    ESP.restart();
+    // delay(100);
+    // ESP.restart();
 }
 void wifiapstart() {
     if (serialmode == 1) {
@@ -1027,8 +1027,8 @@ void wifiSTAcheck() {
 }
 void buttonWIFIenable() {
     if (serialmode == 1) {
-                Serial.println("buttonWIFIenable");
-            }
+        Serial.println("buttonWIFIenable");
+    }
     timer.enable(timerbuttonWIFIdisable);
     timer.restartTimer(timerbuttonWIFIdisable);
     wifiSTAstart();
@@ -1197,6 +1197,10 @@ void oneClick0() {
     } else {
         bWIFIenable = 1;
     }
+    if (serialmode == 1) {
+        Serial.print("bWIFIenable: ");
+        Serial.println("bWIFIenable");
+    }
     uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("oneClick");
     //pierwszy raz po reset
@@ -1222,6 +1226,10 @@ void oneClick0() {
 void DoubleClick0() {
     if (bWIFIenable == 1) {
         bWIFIenable = 3;
+    }
+    if (serialmode == 1) {
+        Serial.print("bWIFIenable: ");
+        Serial.println("bWIFIenable");
     }
     uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("DoubleClick");
@@ -1249,6 +1257,10 @@ void DoubleClick0() {
 void LongPressStart0() {
     if (bWIFIenable == 3) {
         bWIFIenable = 5;
+    }
+    if (serialmode == 1) {
+        Serial.print("bWIFIenable: ");
+        Serial.println("bWIFIenable");
     }
     uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("LongPressStart");
@@ -1571,9 +1583,8 @@ void SettingWriteEEPROM() {
     SettingSave = 0;
     if (ServerActive == 0) {
         wificlose();
-    } else {
-        ESP.restart();
     }
+    ESP.restart();
 }
 void FactoryWriteEEPROM() {
     if (serialmode == 1) Serial.print("Ustawienia fabryczne...");
@@ -2110,9 +2121,9 @@ void relaydimonoff() {
         //relayToff
         roff = 1;
         relays(1);
+        //test git
     }
 }
-// za pomoca kombinacji przyciskow wlaczamy wifi OTA na x czasu.
 // wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
 //  WiFi.macAddress() jako nazwa urzadzenia?`1`1
@@ -2134,6 +2145,6 @@ void relaydimonoff() {
 //fs       pio run --target uploadfs --upload-port 192.168.43.47
 
 // *** KOMITY ***
-// poprawa wifi. sekwencja: oneClick0 - DoubleClick0 - LongPressStart0 - oneClick0 wlacza WIFI OTA na 4 min.
+// poprawa wifi. sekwencja: oneClick0 - DoubleClick0 - LongPressStart0 - oneClick0 wlacza WIFI OTA na 10 min.
 // WWW dodano zmienna wifiAPon - po zaniku lokalnego wifi-STA, bedzie probowal sie ponownie polaczyc. Jesli nie uda sie to wlaczy AP mode lub bedzie probowal nadal laczyc co 5 min.
 // WWW - zapamietanie ssid, pass do eeprom, po nieudanej probie logowania do sieci lokalnej wlacza sie AP mode. Sprawdzanie polaczenia wifi co 5min. Jesli bedzie rozlaczene to bedzie probowac laczyc x co x czas. Poprawa OTA
