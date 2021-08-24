@@ -124,6 +124,11 @@ Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 //Adafruit_SH1106 display(21, 22);
 //<--
 
+const uint8_t logo16_wifi_bmp[] PROGMEM =  //logo wifi 16
+    {
+        0x00, 0x00, 0x00, 0x00, 0xE0, 0x07, 0x38, 0x1C, 0xC4, 0x23, 0x72, 0x4E,
+        0x08, 0x10, 0xE4, 0x27, 0x10, 0x0C, 0x90, 0x09, 0x40, 0x02, 0x60, 0x06,
+        0x40, 0x02, 0x80, 0x01, 0x00, 0x00, 0x00, 0x00};
 // OneButton button(SW1pin, true, 1);
 OneButton button(SW1pin, true);   //SW1pin
 OneButton button1(SW2pin, true);  //SW2pin
@@ -1926,6 +1931,8 @@ void rysujemy_na_lcd() {
         display.setFont(&FreeSans12pt7b);
         display.print(" C");
         display.setFont();
+
+        display.drawXBitmap(0, 50, logo16_wifi_bmp, 16, 16, WHITE);  //16
 
         PokazSW1NaDisplay(0);
     }
