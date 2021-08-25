@@ -129,6 +129,14 @@ const uint8_t logo16_wifi_bmp[] PROGMEM =  //logo wifi 16
         0x00, 0x00, 0x00, 0x00, 0xE0, 0x07, 0x38, 0x1C, 0xC4, 0x23, 0x72, 0x4E,
         0x08, 0x10, 0xE4, 0x27, 0x10, 0x0C, 0x90, 0x09, 0x40, 0x02, 0x60, 0x06,
         0x40, 0x02, 0x80, 0x01, 0x00, 0x00, 0x00, 0x00};
+const uint8_t Signal816[16] PROGMEM =  //mobie signal
+    {
+        0xFE, 0x02, 0x92, 0x0A, 0x54, 0x2A, 0x38, 0xAA, 0x12, 0xAA, 0x12, 0xAA, 0x12, 0xAA, 0x12, 0xAA};
+
+const uint8_t Msg816[16] PROGMEM =  //message
+    {
+        0x1F, 0xF8, 0x10, 0x08, 0x18, 0x18, 0x14, 0x28, 0x13, 0xC8, 0x10, 0x08, 0x10, 0x08, 0x1F, 0xF8};
+
 // OneButton button(SW1pin, true, 1);
 OneButton button(SW1pin, true);   //SW1pin
 OneButton button1(SW2pin, true);  //SW2pin
@@ -1005,8 +1013,11 @@ void wifiSTAcheck() {
         if ((wifiSTAon == 0) || (wifiAPconnected == 1)) {
             if (wifiAPconnected != 1) {
                 wifiSTAon = 1;
+                zapamietanyCzasOLED = aktualnyCzas;
+                SMSbuf = "IP: " + WiFi.localIP().toString() + "";
             }
             timer.disable(timerWifiSTACon);
+<<<<<<< Updated upstream
             if (wifiAPconnected == 1) {
                 zapamietanyCzasOLED = aktualnyCzas;
                 SMSbuf = "IP: 192.168.1.100";
@@ -1014,6 +1025,9 @@ void wifiSTAcheck() {
                 zapamietanyCzasOLED = aktualnyCzas;
                 SMSbuf = "IP: " + WiFi.localIP().toString() + "";
             }
+=======
+
+>>>>>>> Stashed changes
             server.on("/headers", []() {  // wysyla naglowki
                 server.sendHeader("Access-Control-Allow-Origin", "*");
                 server.sendHeader("access-control-allow-credentials", "true");
@@ -1955,8 +1969,13 @@ void rysujemy_na_lcd() {
         display.print(" C");
         display.setFont();
 
+        if (wifiSTAon == 1 || wifiAPconnected == 1) {
+            display.drawXBitmap(0, 50, logo16_wifi_bmp, 16, 16, WHITE);
+        }
+        display.drawBitmap(14, 56, Msg816, 16, 8, WHITE);  //16
+        display.drawBitmap(100, 56, Signal816, 16, 8, WHITE);
 
-        display.fillCircle(122, 54, 5, WHITE);
+        display.filSlCircle(122, 54, 5, WHITE);
         PokazSW1NaDisplay(0);
     }
     rysuj_jasnosc_na_lcd(numDIM);  //w tej funkcji na koncu jest display.display();
