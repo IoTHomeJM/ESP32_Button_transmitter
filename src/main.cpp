@@ -78,7 +78,7 @@ char* passwordF = strdup("1234567890");
 
 String hostname = "SWModule";
 WebServer server(80);
-bool wifiSTAon = 0, wifiAPon = 1, buttonWIFIactived = 0, wifiAPconnected = 0;
+bool wifiSTAon = 0, wifiAPon = 1, buttonWIFIactived = 0, wifiAPconnected = 0, wifiStartConnecting = 0;
 uint8_t wifiSTAonCN = 0;
 //<--server
 
@@ -436,10 +436,10 @@ void setup() {
         }
 
         rysujemy_na_lcd();
-    } else {
-        SMSbuf = "GSM wylaczony";
-        rysujemy_na_lcd();
-    }
+    }  // else {
+    //     SMSbuf = "GSM wylaczony";
+    //     rysujemy_na_lcd();
+    // }
 
     if (!SPIFFS.begin(true)) {
         Serial.println("SPIFFS init error");
@@ -912,6 +912,7 @@ void wificlose() {
     wifiAPconnected = 0;
     wifiSTAonCN = 0;
     wifiSTAon = 0;
+    wifiStartConnecting = 0;
     ArduinoOTA.end();
     server.stop();
     if (serialmode == 1) {
@@ -955,6 +956,7 @@ void wifiSTAstart() {
         timer.enable(timerWifiSTAcheck);
         timer.enable(timerWifiSTACon);
     }
+    wifiStartConnecting = 1;
     WiFi.persistent(false);
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
@@ -1017,7 +1019,7 @@ void wifiSTAcheck() {
                 SMSbuf = "IP: " + WiFi.localIP().toString() + "";
             }
             timer.disable(timerWifiSTACon);
-<<<<<<< Updated upstream
+
             if (wifiAPconnected == 1) {
                 zapamietanyCzasOLED = aktualnyCzas;
                 SMSbuf = "IP: 192.168.1.100";
@@ -1025,9 +1027,7 @@ void wifiSTAcheck() {
                 zapamietanyCzasOLED = aktualnyCzas;
                 SMSbuf = "IP: " + WiFi.localIP().toString() + "";
             }
-=======
 
->>>>>>> Stashed changes
             server.on("/headers", []() {  // wysyla naglowki
                 server.sendHeader("Access-Control-Allow-Origin", "*");
                 server.sendHeader("access-control-allow-credentials", "true");
@@ -1968,17 +1968,21 @@ void rysujemy_na_lcd() {
         display.setFont(&FreeSans12pt7b);
         display.print(" C");
         display.setFont();
-
         if (wifiSTAon == 1 || wifiAPconnected == 1) {
             display.drawXBitmap(0, 50, logo16_wifi_bmp, 16, 16, WHITE);
+        } else if (wifiStartConnecting == 1) {
+            display.fillCircle(7, 63, 2, WHITE);
         }
-        display.drawBitmap(14, 56, Msg816, 16, 8, WHITE);  //16
-        display.drawBitmap(100, 56, Signal816, 16, 8, WHITE);
-
-        display.filSlCircle(122, 54, 5, WHITE);
+        display.drawBitmap(14, 56, Msg816, 16, 8, WHITE);
+        if (gsminit == 1) {
+            display.drawBitmap(100, 56, Signal816, 16, 8, WHITE);
+        } else if (serialmode == 2) {
+            display.drawBitmap(100, 56, Signal816, 9, 8, WHITE);
+            display.fillCircle(106, 62, 2, WHITE);
+        }
         PokazSW1NaDisplay(0);
     }
-    rysuj_jasnosc_na_lcd(numDIM);  //w tej funkcji na koncu jest display.display();
+    rysuj_jasnosc_na_lcd(numDIM);  //w tej funkcji na koncu jest display.display()
 }
 
 void aktualizuj_timestr() {
