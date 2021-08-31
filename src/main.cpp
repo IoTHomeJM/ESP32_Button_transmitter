@@ -147,6 +147,7 @@ bool dimming_up = 0;
 bool poRestarcieTestSW1 = 1;
 uint8_t bWIFIenable = 0;
 char timestr[10] = "--:--:--";
+char* Timestamp = strdup("575420400");
 
 boolean SW1TouchEnable = 0;  // aktywacja funkcji przycisku dotyku
 boolean SW1TouchActive = 0;  // dotyk uruchamia sie dopiero po inicjalizacji
@@ -187,6 +188,9 @@ void setup() {
     // delay(1000);
     //         FactoryWriteEEPROM();
     // }
+    // strncpy(eepromBUF, Timestamp.c_str(), 100);
+    // strcpy(Timestamp, Timestamp.c_str());
+    //  writeStringToEEPROM(2066, Timestamp);
     for (int i = 0; i < 64; ++i) {
         eepromBUF[i] = readEEPROM(i);
     }  // read 32 byte eeprom
@@ -221,6 +225,7 @@ void setup() {
 
     strcpy(ssid, readStringFromEEPROM(2000).c_str());
     strcpy(password, readStringFromEEPROM(2033).c_str());
+    strcpy(Timestamp, readStringFromEEPROM(2066).c_str());
 
     //dimmset_now = jasnosc;
 
@@ -446,7 +451,7 @@ void setup() {
         return;
     }  // inicjowanie systemu plikow SPI
 
-    // setTime(1586365689); // ustawia zegarek
+    // setTime((1629961343959 / 1000) + 7200);  // ustawia zegarek
 
     if (ServerActive == 1) {
         // wifiapstart();
@@ -491,6 +496,7 @@ void setup() {
         touch_pad_set_fsm_mode(TOUCH_FSM_MODE_TIMER);
         touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
     }
+    setTime(String(Timestamp).toInt() + 7200);  //ustawiamy zegarek
 }
 ////////////////////////////
 // LOOP ////////////////////
@@ -1119,6 +1125,9 @@ void konfiguracja() {
     strcpy(ssid, server.arg("SSID").c_str());
     strcpy(password, server.arg("pass").c_str());
     wifiAPon = server.arg("wifiAPon").toInt();
+    strcpy(Timestamp, server.arg("ttime").c_str());
+    setTime(String(Timestamp).toInt() + 7200);
+
     create_json();
     server.send(200, "application/json", json);
 }
@@ -1529,24 +1538,25 @@ void writeEEPROM(unsigned int adres, uint16_t dane, uint8_t dlugosc) {
             break;
     }
     Wire.endTransmission();
-    if (serialmode == 1) {
-        Serial.println("Zapis EEPROM ok");
-    }
+
+    if (serialmode == 1) Serial.println("Zapis EEPROM ok");
+
     zapamietanyCzasEEPROM = aktualnyCzas;
 }
 void writeStringToEEPROM(int adres, const String& ToWrite) {
     byte size = ToWrite.length();
     writeEEPROM(adres, size, 1);
-    Serial.println(size);
+    if (serialmode == 1) Serial.println(size);
     delay(6);
     for (int i = 0; i < size; i++) {
         adres++;
         writeEEPROM(adres, ToWrite[i], 1);
-        Serial.print(ToWrite[i]);
-        Serial.println(adres);
+        if (serialmode == 1) {
+            Serial.print(ToWrite[i]);
+            Serial.println(adres);
+        }
         delay(6);
     }
-    // delay(100);
 }
 
 String readStringFromEEPROM(int addrOffset) {
@@ -1559,7 +1569,7 @@ String readStringFromEEPROM(int addrOffset) {
         data[newStrLen] = '\0';
         // data[newStrLen] = "\/ 0";  // !!! NOTE !!! Remove the space between the slash "/" and "0" (I've added a space because otherwise there is a display bug)
     } else {
-        if (serialmode == 1) Serial.print("Blad odczytu Strina z eeprom-za dlugi");
+        if (serialmode == 1) Serial.println("Blad odczytu Stringa z eeprom-za dlugi");
     }
     return String(data);
 }
@@ -1570,7 +1580,10 @@ void SettingWriteEEPROM() {
     delay(6);
     writeEEPROM(36, wifiAPon, 1);
     delay(6);
+    writeStringToEEPROM(2066, Timestamp);
+    delay(6);
     writeStringToEEPROM(2033, password);
+    delay(6);
     writeStringToEEPROM(2000, ssid);
     delay(6);
     writeEEPROM(34, relayToff2, 2);  //34,35
@@ -1630,10 +1643,14 @@ void SettingWriteEEPROM() {
 }
 void FactoryWriteEEPROM() {
     if (serialmode == 1) Serial.print("Ustawienia fabryczne...");
+    delay(6);
     writeEEPROM(36, 1, 1);
     delay(6);
     writeStringToEEPROM(2000, "ssid");
+    delay(6);
     writeStringToEEPROM(2033, "pass");
+    delay(6);
+    writeStringToEEPROM(2066, "575420400");
     writeEEPROM(34, 5000, 2);  //34,35
     delay(6);
     writeEEPROM(32, 5000, 2);  // 32, 33
@@ -1976,6 +1993,7 @@ void rysujemy_na_lcd() {
         display.drawBitmap(14, 56, Msg816, 16, 8, WHITE);
         if (gsminit == 1) {
             display.drawBitmap(100, 56, Signal816, 16, 8, WHITE);
+
         } else if (serialmode == 2) {
             display.drawBitmap(100, 56, Signal816, 9, 8, WHITE);
             display.fillCircle(106, 62, 2, WHITE);
@@ -2176,7 +2194,7 @@ void relaydimonoff() {
         relays(1);
     }
 }
-// kontrolka wifi OTA na oled.
+
 // wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
 //  WiFi.macAddress() jako nazwa urzadzenia?`1`1

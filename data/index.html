@@ -12158,7 +12158,7 @@
                             </div>
 
 
-                            <div class="contact-form__input-group">
+                            <div class="contact-form__input-group ">
                                 <label class="contact-form__label">NIE AKTYWNE tylko w dimer LightOnBoot(Dim1):</label> </br>
                                 <span class="p-4">
                                     <label class="contact-form__label contact-form__label--radio " for="1">TAK</label>
@@ -12169,9 +12169,12 @@
                                 <input class="contact-form__input contact-form__input--radio" id="2" name="LightOnBoot" type="radio" value="0" />
 
                             </div>
+
                     </div>
                 </div>
+
                 <div class="contact-form__input-group">
+                    <input type="hidden" class=" contact-form__input contact-form__input--text" id="43" name="ttime" type="text" value="0" />
                     <input name="secret" type="hidden" value="1b3a9374-1a8e-434e-90ab-21aa7b9b80e7" />
                     </br><label class="contact-form__label">Zapisz w EEPROM, restart modułu:</label></br>
                     <span class="p-4">
@@ -12198,7 +12201,20 @@
 
 
     <script type="text/javascript">
-        var frm = $('#contactForm1');
+        var x = setInterval(function () { TimeZ() }, 1000);
+        function TimeZ() {
+
+            var Tjson = Math.round(new Date() / 1000);
+            // var Ttime = d.toLocaleTimeString();
+            // var Tdate = d.toLocaleDateString();
+            // var Tjson = d.valueOf();
+            // document.getElementById("time").innerHTML = Ttime;
+            // document.getElementById("date").innerHTML = Tdate;
+            // document.getElementById("43").innerHTML = Tjson;
+            $("#43").val(Tjson);
+        }
+
+        var frm = $('#contactForm1')
         var frm2 = $('.frajaxbtn');
         var server = '';
         frm.submit(function (e) {
@@ -12305,7 +12321,7 @@
                     } else {
                         $("#41").prop("checked", true)
                     }
-                     //$("#").val(JSON.stringify(res[0].frameID));
+                    //$("#").val(JSON.stringify(res[0].frameID));
                     //$("#").val(JSON.stringify(res[0].celsius));
 
                     res.forEach(el => {
