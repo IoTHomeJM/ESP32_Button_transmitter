@@ -57,3 +57,4 @@ String readStringFromEEPROM(int addrOffset);
 void wifiSTAconnecting();
 void buttonWIFIenable();
 void buttonWIFIdisable();
+void timeNetUpdate();

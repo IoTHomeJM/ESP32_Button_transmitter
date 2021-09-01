@@ -7,6 +7,7 @@
 #include <Fonts/FreeSans12pt7b.h>
 #include <Fonts/FreeSansBold24pt7b.h>
 #include <LightDimmerESP32.h>
+#include <NTPClient.h>
 #include <OneButton.h>
 #include <OneWire.h>
 #include <SPI.h>
@@ -15,6 +16,7 @@
 #include <TimeLib.h>
 #include <WebServer.h>
 #include <WiFi.h>
+#include <WiFiUdp.h>
 #include <Wire.h>
 #include <esp32_can.h>
 #include <void.h>
@@ -22,6 +24,7 @@
 #include "RF24.h"
 #include "SPIFFS.h"
 #include "nRF24L01.h"
+
 int zaok = 5;          // zaokraglenia suwaka jasnosci na oled
 int dimActivNumb = 0;  //dla rysowania jasnosci na oled.
 bool checkOne1 = 1;
@@ -80,6 +83,8 @@ String hostname = "SWModule";
 WebServer server(80);
 bool wifiSTAon = 0, wifiAPon = 1, buttonWIFIactived = 0, wifiAPconnected = 0, wifiStartConnecting = 0;
 uint8_t wifiSTAonCN = 0;
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 0, 60000);  // ntp
 //<--server
 
 //--> CAN-BUS
@@ -177,7 +182,7 @@ uint16_t relayToff1 = 5;                       // czas opoznienia wylaczenia prz
 uint16_t relayToff2 = 5;
 bool roff = 1;
 
-int timerWifiSTAcheck = 0, timerWifiSTACon = 0, timerServerON = 0, timerbuttonWIFIdisable = 0;
+int timerWifiSTAcheck = 0, timerWifiSTACon = 0, timerServerON = 0, timerbuttonWIFIdisable = 0, timertimeNetUpdate = 0;
 
 void setup() {
     //--> EEPROM
@@ -200,6 +205,7 @@ void setup() {
     dimmsetLast[0] = eepromBUF[0] * 256 + eepromBUF[1];
     dimmsetLast[1] = eepromBUF[6] * 256 + eepromBUF[7];
     dimmsetLast[2] = eepromBUF[8] * 256 + eepromBUF[9];
+
     DevID = eepromBUF[4];
     SubDevID = eepromBUF[5];
     LightOnBoot = eepromBUF[10];
@@ -467,6 +473,7 @@ void setup() {
     timerWifiSTAcheck = timer.setInterval(60000, wifiSTAcheck);  // co 5min 300000
     timerServerON = timer.setInterval(150, serverON);            //1500
     timerWifiSTACon = timer.setInterval(6000, wifiSTAconnecting);
+    timertimeNetUpdate = timer.setInterval(43200000, timeNetUpdate);  // co 12h
 
     // inicjalizacja czujnika temperatury DS18B20 tj. odczyt jego adresu
     ds.search(DallasAddr);  // NIE WIEM DLACZEGO ALE TRZEBA WYWOLAC 2 RAZY
@@ -486,6 +493,8 @@ void setup() {
         timer.disable(timerServerON);
         timer.disable(timerWifiSTACon);
     }
+    timer.disable(timertimeNetUpdate);
+
     if (gsminit == 1) {
         timer.setInterval(500, readSMS);
     }
@@ -915,12 +924,14 @@ void wificlose() {
     timer.disable(timerWifiSTAcheck);
     timer.disable(timerWifiSTACon);
     timer.disable(timerServerON);
+    timer.disable(timertimeNetUpdate);
     wifiAPconnected = 0;
     wifiSTAonCN = 0;
     wifiSTAon = 0;
     wifiStartConnecting = 0;
     ArduinoOTA.end();
     server.stop();
+    timeClient.end();
     if (serialmode == 1) {
         Serial.println("WiFi OTA wylaczone. ");
         Serial.print("wifiAPconnected: ");
@@ -1021,8 +1032,11 @@ void wifiSTAcheck() {
         if ((wifiSTAon == 0) || (wifiAPconnected == 1)) {
             if (wifiAPconnected != 1) {
                 wifiSTAon = 1;
+                timeClient.begin();                // NTP
+                timer.enable(timertimeNetUpdate);  // NTP
                 zapamietanyCzasOLED = aktualnyCzas;
                 SMSbuf = "IP: " + WiFi.localIP().toString() + "";
+                timeNetUpdate();
             }
             timer.disable(timerWifiSTACon);
 
@@ -2193,6 +2207,12 @@ void relaydimonoff() {
         roff = 1;
         relays(1);
     }
+}
+
+void timeNetUpdate() {
+    timeClient.update();
+    setTime(timeClient.getEpochTime() + 7200);
+    sendCAN(255, 2, timeClient.getEpochTime(), 0);
 }
 
 // wymyslic kasowanie wiadomosci sms.
