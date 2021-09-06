@@ -5,6 +5,8 @@
 #include <ArduinoOTA.h>
 #include <EEPROM.h>
 #include <Fonts/FreeSans12pt7b.h>
+#include <Fonts/FreeSans9pt7b.h>
+#include <Fonts/FreeSansBold18pt7b.h>
 #include <Fonts/FreeSansBold24pt7b.h>
 #include <LightDimmerESP32.h>
 #include <NTPClient.h>
@@ -424,8 +426,8 @@ void setup() {
             delay(200);
             readSMS();
             if (SMSbuf.indexOf("OK") > -1) {
-                SMSbuf = "GSM zainicjowany";
-                rysujemy_na_lcd();
+                // SMSbuf = "GSM zainicjowany";
+                // rysujemy_na_lcd();
                 cz = 20;
                 gsminit = 1;
             }
@@ -1984,18 +1986,28 @@ void rysujemy_na_lcd() {
         display.print("PA:");
         display.println(radio.getPALevel());
 
-        display.setFont(&FreeSansBold24pt7b);
+        display.setFont(&FreeSansBold18pt7b);
+        //    display.setFont(&FreeSans12pt7b);
+
         // dwie wersje wyswietlania temperatury, druga z miejscem dziesietnym
-        display.setCursor(20, 60);
+
+        display.setCursor(20, 62);
         char odczyt[4];
         dtostrf(celsius, 3, 0, odczyt);
-        display.drawCircle(90, 39, 3, WHITE);
+        display.drawCircle(75, 39, 3, WHITE);
         if (celsius == -99) {
-            display.print(" --");
+            display.print("  --");
         } else {
             display.print(odczyt);
         }
-        // display.setCursor(0,60); char odczyt[5]; dtostrf(celsius,3, 1, odczyt); display.print(odczyt); display.drawCircle(95,39,3, WHITE);
+        /*
+        display.setCursor(20, 60);
+        char odczyt[5];
+        dtostrf(celsius, 3, 1, odczyt);
+        display.print(odczyt);
+        display.drawCircle(95, 39, 3, WHITE);
+        */
+
         display.setFont(&FreeSans12pt7b);
         display.print(" C");
         display.setFont();
@@ -2039,22 +2051,35 @@ void OdczytTemperatury() {
     byte data[12];
     ds.reset();
     ds.select(DallasAddr);
+
     ds.write(0xBE);
     for (byte i = 0; i < 9; i++) {
         data[i] = ds.read();
     }
+    int16_t raw = (data[1] << 8) | data[0];
 
-    if (OneWire::crc8(data, 8) == data[8]) {
-        int16_t raw = (data[1] << 8) | data[0];
+    if (OneWire::crc8(DallasAddr, 7) == DallasAddr[7]) {
         byte cfg = (data[4] & 0x60);
-        if (cfg == 0x00)
+        if (serialmode == 1) {
+            Serial.print("cfg: ");
+            Serial.print(cfg);
+        }
+        if (cfg == 0x00) {
             raw = raw & ~7;  // 9 bit resolution, 93.75 ms
-        else if (cfg == 0x20)
+        } else if (cfg == 0x20) {
             raw = raw & ~3;  // 10 bit res, 187.5 ms
-        else if (cfg == 0x40)
-            raw = raw & ~1;  // 11 bit res, 375 ms
+        } else if (cfg == 0x40) {
+            raw = raw & ~1;
+        }  // 11 bit res, 375 ms
         //// default is 12 bit resolution, 750 ms conversion time
+
         celsius = (float)raw / 16.0;
+        if (serialmode == 1) {
+            Serial.print(" Temp: ");
+            Serial.println(celsius);
+        }
+    } else if (serialmode == 1) {
+        Serial.println("Temp-BLAD CRC ");
     }
 }
 
