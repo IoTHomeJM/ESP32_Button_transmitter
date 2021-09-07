@@ -1,0 +1,94 @@
+/*
+ * Light Dimmer Library for Arduino
+ *
+ * Copyright Jean-Luc Béchennec 2018
+ *
+ * This software is distributed under the GNU Public Licence v2 (GPLv2)
+ *
+ * Please read the LICENCE file
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
+ */
+
+#ifndef __LIGHT_DIMMER__
+#define __LIGHT_DIMMER__
+
+#include "Arduino.h"
+
+class LightDimmerESP32
+{
+  private:
+    enum { LD_OFF, LD_ON, LD_RISING, LD_FALLING };
+
+    uint8_t  mState;
+    uint16_t mMax;
+    uint16_t mRiseTime;
+    uint16_t mFallTime;
+    uint16_t mOnTime;
+    uint16_t mPeriod;
+    uint32_t mNextEventDate;
+
+    LightDimmerESP32 *mNext;
+    static LightDimmerESP32 *sLightList;
+    static LightDimmerESP32 *sCurrent;
+
+    void updateState();
+    virtual void updateOutput();
+
+  protected:
+    uint16_t  old_mValue;
+    uint16_t  mValue;
+    uint8_t  mPin:6;
+    bool     mBlink:1;
+    uint8_t  mOff:1;
+
+  public:
+    LightDimmerESP32();
+    void begin(const uint8_t inPin, const uint8_t inOn);
+    void setMax(const uint16_t inMax) { mMax = inMax; };
+    void setFadingTime(const uint16_t inFallTime) { mFallTime = inFallTime > 0 ? inFallTime : 1; };
+    void setBrighteningTime(const uint16_t inRiseTime) { mRiseTime = inRiseTime > 0 ? inRiseTime : 1; };
+    void setOnTime(const uint16_t inOnTime) { mOnTime = inOnTime; };
+    void setPeriod(const uint16_t inPeriod) { mPeriod = inPeriod; };
+    void setupMax(const uint16_t inMax);
+    void on();
+    void off();
+    void startBlink();
+    void stopBlink() { mBlink = false; };
+
+    bool isOn()                { return (mState == LD_ON); }
+    bool isOff()               { return (mState == LD_OFF); }
+    bool isFading()            { return (mState == LD_FALLING); }
+    bool isBrightening()       { return (mState == LD_RISING); }
+    bool isBlinking()          { return mBlink; }
+    uint16_t maximum()         { return mMax; }
+    uint16_t fadingTime()      { return mFallTime; }
+    uint16_t brighteningTime() { return mRiseTime; }
+    uint16_t onTime()          { return mOnTime; }
+    uint16_t period()          { return mPeriod; }
+    uint8_t pin()              { return mPin; }
+    uint16_t value()           { return mValue; }
+
+    static void update();
+    static void update(const uint8_t inHowMany);
+};
+
+class LightDimmerESP32Soft : public LightDimmerESP32
+{
+  private:
+    uint8_t mDuty;
+
+    virtual void updateOutput();
+
+  public:
+    LightDimmerESP32Soft() : LightDimmerESP32() {}
+
+};
+
+#endif
