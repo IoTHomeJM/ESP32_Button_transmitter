@@ -70,7 +70,7 @@ int16_t dimmset_min = 2;
 //--> server
 boolean ServerActive = 1;
 
-char* ssidAP = strdup("SWModule");        // Enter SSID here
+char* ssidAP = strdup("SW");              // Enter SSID here
 char* passwordAP = strdup("1234567890");  // Enter Password here
 // char* ssid = strdup("NET2");
 // char* password = strdup("Janek1Ewa2-s7");
@@ -80,8 +80,9 @@ char* ssid = strdup("NET");
 char* password = strdup("Janek1@$Eva");
 char* ssidF = strdup("JLU");
 char* passwordF = strdup("1234567890");
-
-String hostname = "SWModule";
+char* hostname = strdup("1234567890");
+// String hostname = "SW";
+char* nameDev = strdup("nD");
 WebServer server(80);
 bool wifiSTAon = 0, wifiAPon = 1, buttonWIFIactived = 0, wifiAPconnected = 0, wifiStartConnecting = 0;
 uint8_t wifiSTAonCN = 0;
@@ -165,7 +166,8 @@ boolean SW1TouchPrevious = 0;
 uint8_t SW1TouchFilter = 0;
 int SW1TouchValMin = 255;  //tylko do testow
 
-boolean OTAActive = 0, FactorySet = 0, SettingSave = 0;
+boolean OTAActive = 0, SettingSave = 0;
+uint8_t FactorySet = 0;
 String json;
 
 Sim800l Sim800l;     //to declare the library
@@ -185,56 +187,57 @@ uint16_t relayToff2 = 5;
 bool roff = 1;
 
 int timerWifiSTAcheck = 0, timerWifiSTACon = 0, timerServerON = 0, timerbuttonWIFIdisable = 0, timertimeNetUpdate = 0;
+//adresy eeprom
+int FactorySetE = 37;
+int nameDevE = 2200;
 
 void setup() {
     //--> EEPROM
     Wire.begin(21, 22);  // sda, scl
     Wire.setClock(4000000);
-    // nowy modul musi zapisac sobie odpowiednio eeprom
-    // if (FactorySet == 1) {
-    // delay(1000);
-    //         FactoryWriteEEPROM();
-    // }
-    // strncpy(eepromBUF, Timestamp.c_str(), 100);
-    // strcpy(Timestamp, Timestamp.c_str());
-    //  writeStringToEEPROM(2066, Timestamp);
-    for (int i = 0; i < 64; ++i) {
-        eepromBUF[i] = readEEPROM(i);
-    }  // read 32 byte eeprom
-    // jasnosc = eepromBUF[0] * 256 + eepromBUF[1];
-    // jasnosc2 = eepromBUF[6] * 256 + eepromBUF[7];
-    // jasnosc3 = eepromBUF[8] * 256 + eepromBUF[9];
-    dimmsetLast[0] = eepromBUF[0] * 256 + eepromBUF[1];
-    dimmsetLast[1] = eepromBUF[6] * 256 + eepromBUF[7];
-    dimmsetLast[2] = eepromBUF[8] * 256 + eepromBUF[9];
 
-    DevID = eepromBUF[4];
-    SubDevID = eepromBUF[5];
-    LightOnBoot = eepromBUF[10];
-    Flag = eepromBUF[11];
-    allFrame = eepromBUF[12];
-    PALevel = eepromBUF[13];
-    NRFchannel = eepromBUF[14];
-    SW1TouchEnable = eepromBUF[15];
-    OTAActive = eepromBUF[16];
-    ServerActive = eepromBUF[17];
-    ResolutionLED = eepromBUF[18];
-    FreqLED = eepromBUF[19] * 256 + eepromBUF[20];
-    czasnazapisweeprom = eepromBUF[21] * 256 + eepromBUF[22];
-    serialmode = eepromBUF[23];
-    dimmsetMax[0] = eepromBUF[24] * 256 + eepromBUF[25];
-    DimUpDownResolution = eepromBUF[26];
-    dimmsetMax[1] = eepromBUF[27] * 256 + eepromBUF[28];
-    dimmsetMax[2] = eepromBUF[29] * 256 + eepromBUF[30];
-    RF24_rxAddr = (127 << 24) + (118 << 16) + (eepromBUF[31] << 8) + 0;
-    relayToff1 = eepromBUF[32] * 256 + eepromBUF[33];
-    relayToff2 = eepromBUF[34] * 256 + eepromBUF[35];
-    wifiAPon = eepromBUF[36];
+    FactorySet = readEEPROM(FactorySetE);
+    if (FactorySet != 123) {
+        FactoryWriteEEPROM();
+    } else {
+        for (int i = 0; i < 64; ++i) {
+            eepromBUF[i] = readEEPROM(i);
+        }  // read 64 byte eeprom
+        // jasnosc = eepromBUF[0] * 256 + eepromBUF[1];
+        // jasnosc2 = eepromBUF[6] * 256 + eepromBUF[7];
+        // jasnosc3 = eepromBUF[8] * 256 + eepromBUF[9];
+        dimmsetLast[0] = eepromBUF[0] * 256 + eepromBUF[1];
+        dimmsetLast[1] = eepromBUF[6] * 256 + eepromBUF[7];
+        dimmsetLast[2] = eepromBUF[8] * 256 + eepromBUF[9];
 
-    strcpy(ssid, readStringFromEEPROM(2000).c_str());
-    strcpy(password, readStringFromEEPROM(2033).c_str());
-    strcpy(Timestamp, readStringFromEEPROM(2066).c_str());
+        DevID = eepromBUF[4];
+        SubDevID = eepromBUF[5];
+        LightOnBoot = eepromBUF[10];
+        Flag = eepromBUF[11];
+        allFrame = eepromBUF[12];
+        PALevel = eepromBUF[13];
+        NRFchannel = eepromBUF[14];
+        SW1TouchEnable = eepromBUF[15];
+        OTAActive = eepromBUF[16];
+        ServerActive = eepromBUF[17];
+        ResolutionLED = eepromBUF[18];
+        FreqLED = eepromBUF[19] * 256 + eepromBUF[20];
+        czasnazapisweeprom = eepromBUF[21] * 256 + eepromBUF[22];
+        serialmode = eepromBUF[23];
+        dimmsetMax[0] = eepromBUF[24] * 256 + eepromBUF[25];
+        DimUpDownResolution = eepromBUF[26];
+        dimmsetMax[1] = eepromBUF[27] * 256 + eepromBUF[28];
+        dimmsetMax[2] = eepromBUF[29] * 256 + eepromBUF[30];
+        RF24_rxAddr = (127 << 24) + (118 << 16) + (eepromBUF[31] << 8) + 0;
+        relayToff1 = eepromBUF[32] * 256 + eepromBUF[33];
+        relayToff2 = eepromBUF[34] * 256 + eepromBUF[35];
+        wifiAPon = eepromBUF[36];
 
+        strcpy(ssid, readStringFromEEPROM(2000).c_str());
+        strcpy(password, readStringFromEEPROM(2033).c_str());
+        strcpy(Timestamp, readStringFromEEPROM(2066).c_str());
+        strcpy(nameDev, readStringFromEEPROM(nameDevE).c_str());
+    }
     //dimmset_now = jasnosc;
 
     // konfikuracja poczatkowa przekaznika
@@ -307,10 +310,14 @@ void setup() {
         Serial.println(password);
         Serial.print("wifiAPon: ");
         Serial.println(wifiAPon);
+        Serial.print("nameDev: ");
+        Serial.println(nameDev);
     }
+
+    strcpy(hostname, ("SW_" + String(nameDev) + "-" + String(DevID) + "_" + mcADR() + "").c_str());
     //<-- EEPROM
     /*
-    //-->  ESP32 Dimmer settings
+    // -->  ESP32 Dimmer settings
     ledcSetup(0, FreqLED, ResolutionLED);  // ledChannel, freq, resolution
     ledcSetup(1, FreqLED, ResolutionLED);
     ledcSetup(2, FreqLED, ResolutionLED);
@@ -364,7 +371,7 @@ void setup() {
     }
     //<-- CAN-BUS
 
-    dimmsetMax[0] -= 1;
+    // dimmsetMax[0] -= 1; // !! ??
 
     button.attachClick(oneClick0);
     button.attachDoubleClick(DoubleClick0);
@@ -961,9 +968,8 @@ void wifiapstart() {
     IPAddress gateway(192, 168, 1, 1);
     IPAddress subnet(255, 255, 255, 0);
 
-    hostname += String(DevID);
     WiFi.softAPConfig(local_ip, gateway, subnet);
-    WiFi.softAP(ssidAP, passwordAP);
+    WiFi.softAP(hostname, passwordAP);
     server.begin();
     wifiAPconnected = 1;
 }
@@ -981,8 +987,8 @@ void wifiSTAstart() {
     WiFi.mode(WIFI_OFF);
     delay(100);
     WiFi.mode(WIFI_STA);
-    hostname += String(DevID);
-    WiFi.setHostname(hostname.c_str());
+
+    WiFi.setHostname(hostname);
     if (wifiSTAonCN == 4) {
         WiFi.begin(ssidF, passwordF);
     } else {
@@ -1121,7 +1127,6 @@ void konfiguracja() {
     LightOnBoot = server.arg("LightOnBoot").toInt();
     serialmode = server.arg("serialmode").toInt();
     DimUpDownResolution = server.arg("DimUpDownResolution").toInt();
-    SettingSave = server.arg("eeprom_save").toInt();
 
     dimmsetNow[0] = server.arg("jasnosc1").toInt();
     jasnoscLED(0, dimmsetNow[0]);
@@ -1140,12 +1145,14 @@ void konfiguracja() {
 
     strcpy(ssid, server.arg("SSID").c_str());
     strcpy(password, server.arg("pass").c_str());
+    strcpy(nameDev, server.arg("nameDev").c_str());
     wifiAPon = server.arg("wifiAPon").toInt();
     strcpy(Timestamp, server.arg("ttime").c_str());
     setTime(String(Timestamp).toInt() + 7200);
 
     create_json();
     server.send(200, "application/json", json);
+    SettingSave = server.arg("eeprom_save").toInt();
 }
 
 void handle_NotFound() {
@@ -1186,6 +1193,7 @@ void create_json() {
 
            ",\"SSID\":\"" + String(ssid) +
            "\",\"pass\":\"" + String(password) +
+           "\",\"nameDev\":\"" + String(nameDev) +
            "\"},{\"frameID\":" + String(frameID) +
            ",\"celsius\":" + String(celsius) + "}]";
 }
@@ -1593,6 +1601,7 @@ void SettingWriteEEPROM() {
     if (serialmode == 1) Serial.print("Zapisywanie ustawien...");
 
     // writeEEPROM(37, wifiAPon, 1);
+    writeStringToEEPROM(nameDevE, nameDev);
     delay(6);
     writeEEPROM(36, wifiAPon, 1);
     delay(6);
@@ -1659,6 +1668,9 @@ void SettingWriteEEPROM() {
 }
 void FactoryWriteEEPROM() {
     if (serialmode == 1) Serial.print("Ustawienia fabryczne...");
+    writeStringToEEPROM(nameDevE, "nD");
+    delay(6);
+    writeEEPROM(FactorySetE, 123, 1);  //37
     delay(6);
     writeEEPROM(36, 1, 1);
     delay(6);
@@ -1667,9 +1679,10 @@ void FactoryWriteEEPROM() {
     writeStringToEEPROM(2033, "pass");
     delay(6);
     writeStringToEEPROM(2066, "575420400");
-    writeEEPROM(34, 5000, 2);  //34,35
     delay(6);
-    writeEEPROM(32, 5000, 2);  // 32, 33
+    writeEEPROM(34, 5, 2);  //34,35 relayToff2
+    delay(6);
+    writeEEPROM(32, 5, 2);  // 32, 33 relayToff1
     delay(6);
     writeEEPROM(31, 0, 1);  // RF24_rxAddr
     delay(6);
@@ -1701,7 +1714,7 @@ void FactoryWriteEEPROM() {
     delay(6);
     writeEEPROM(12, 1, 1);  // 12 BAJT allFrame
     delay(6);
-    writeEEPROM(11, 1, 1);  // 11 BAJT Flag
+    writeEEPROM(11, 0, 1);  // 11 BAJT Flag
     delay(6);
     writeEEPROM(10, 1, 1);  // 10 BAJT LightOnBoot
     delay(6);
@@ -1974,17 +1987,18 @@ void rysujemy_na_lcd() {
 
     } else {
         display.setCursor(0, 24);
-        display.print("CAN ID: 0x");
+        display.print("CAN ID:0x");
         display.println(frameID, HEX);  // CAN-BUS ID
 
         display.setCursor(0, 32);
-        display.print("NRF: ");
+        display.print("NRF:");
         display.print(NRFbuf[0]);
-        display.print(", ");
+        display.print(",");
         display.println(NRFbuf[2] * 256 + NRFbuf[1]);
-        display.setCursor(100, 32);
-        display.print("PA:");
-        display.println(radio.getPALevel());
+         display.setCursor(50, 32);
+        // display.print("PA:");
+        // display.println(radio.getPALevel());
+        display.println(nameDev);
 
         display.setFont(&FreeSansBold18pt7b);
         //    display.setFont(&FreeSans12pt7b);
@@ -2239,6 +2253,11 @@ void timeNetUpdate() {
     setTime(timeClient.getEpochTime() + 7200);
     sendCAN(255, 2, timeClient.getEpochTime(), 0);
 }
+String mcADR() {
+    String macADR = WiFi.macAddress();
+    macADR.replace(":", "");
+    return macADR;
+}
 
 // wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
@@ -2259,8 +2278,3 @@ void timeNetUpdate() {
 // trzeba byc w katalogu projektu
 //projekt  pio run --target upload --upload-port 192.168.43.47
 //fs       pio run --target uploadfs --upload-port 192.168.43.47
-
-// *** KOMITY ***
-// poprawa wifi. sekwencja: oneClick0 - DoubleClick0 - LongPressStart0 - oneClick0 wlacza WIFI OTA na 10 min.
-// WWW dodano zmienna wifiAPon - po zaniku lokalnego wifi-STA, bedzie probowal sie ponownie polaczyc. Jesli nie uda sie to wlaczy AP mode lub bedzie probowal nadal laczyc co 5 min.
-// WWW - zapamietanie ssid, pass do eeprom, po nieudanej probie logowania do sieci lokalnej wlacza sie AP mode. Sprawdzanie polaczenia wifi co 5min. Jesli bedzie rozlaczene to bedzie probowac laczyc x co x czas. Poprawa OTA

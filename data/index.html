@@ -12089,6 +12089,10 @@
                                 <label class="contact-form__label contact-form__label--radio" for="41">NIE</label>
                                 <input class="contact-form__input contact-form__input--radio" id="41" name="wifiAPon" type="radio" value="0" />
                             </div>
+                            <div class="contact-form__input-group">
+                                <label class="contact-form__label">Nazwa urzadzenia:</label>
+                                <input class="contact-form__input contact-form__input--text" id="44" name="nameDev" type="text" value="" />
+                            </div>
                     </div>
                     <div class="col-md-6 col-lg-6">
                         <h3 class="text-center text-uppercase text-white mb-0">ŚWIATŁO</h2>
@@ -12321,6 +12325,8 @@
                     } else {
                         $("#41").prop("checked", true)
                     }
+                    $("#44").val(JSON.stringify(res[0].nameDev).replaceAll("\"", ""));
+                    
                     //$("#").val(JSON.stringify(res[0].frameID));
                     //$("#").val(JSON.stringify(res[0].celsius));
 
@@ -12337,7 +12343,8 @@
                     //$('.user-list').removeClass('loading');        
                 });
         });
-
+        
+//dla testow
         const res2 = [
             {
                 "DevID": 2,

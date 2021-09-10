@@ -58,3 +58,4 @@ void wifiSTAconnecting();
 void buttonWIFIenable();
 void buttonWIFIdisable();
 void timeNetUpdate();
+String mcADR();
