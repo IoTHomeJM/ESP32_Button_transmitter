@@ -25,6 +25,7 @@
 
 #include "RF24.h"
 #include "SPIFFS.h"
+#include "litetimers.h"
 #include "nRF24L01.h"
 
 int zaok = 5;          // zaokraglenia suwaka jasnosci na oled
@@ -1995,7 +1996,7 @@ void rysujemy_na_lcd() {
         display.print(NRFbuf[0]);
         display.print(",");
         display.println(NRFbuf[2] * 256 + NRFbuf[1]);
-         display.setCursor(50, 32);
+        display.setCursor(50, 32);
         // display.print("PA:");
         // display.println(radio.getPALevel());
         display.println(nameDev);
