@@ -1,3 +1,33 @@
+#ifndef button_transmitter_h
+#define button_transmitter_h
+//#include <Adafruit_SH1106.h>   // oled 1.3 cala
+#include <Adafruit_SSD1306.h>  // oled 0.9 cala
+#include <Arduino.h>
+#include <ArduinoOTA.h>
+#include <EEPROM.h>
+#include <Fonts/FreeSans12pt7b.h>
+#include <Fonts/FreeSans9pt7b.h>
+#include <Fonts/FreeSansBold18pt7b.h>
+#include <Fonts/FreeSansBold24pt7b.h>
+#include <LightDimmerESP32.h>
+#include <NTPClient.h>
+#include <OneButton.h>
+#include <OneWire.h>
+#include <SPI.h>
+#include <Sim800l.h>
+#include <SimpleTimer.h>
+#include <TimeLib.h>
+#include <WebServer.h>
+#include <WiFi.h>
+#include <WiFiUdp.h>
+#include <Wire.h>
+#include <esp32_can.h>
+
+
+#include "RF24.h"
+#include "SPIFFS.h"
+#include "nRF24L01.h"
+
 void EnableOTA();
 void readNRF();
 void sendNRF(uint8_t fnID, uint16_t fndata);
@@ -59,3 +89,15 @@ void buttonWIFIenable();
 void buttonWIFIdisable();
 void timeNetUpdate();
 String mcADR();
+
+class Qtimers {
+    int active, function, hour, minutes, day, month;
+
+   public:
+    Qtimers(int = 0, int = 0, int = 0, int = 0, int = 0, int = 0);  // konstruktor
+    // active, function, hour, minutes, day, montch
+    ~Qtimers();  // destruktor
+
+    void tdcomp(void);  //
+};
+#endif

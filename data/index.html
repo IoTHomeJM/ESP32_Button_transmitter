@@ -12173,6 +12173,30 @@
                                 <input class="contact-form__input contact-form__input--radio" id="2" name="LightOnBoot" type="radio" value="0" />
 
                             </div>
+                            <div class="contact-form__input-group" title="Timer jeden">
+                                <label class="contact-form__label" for="45">Godzina</label></br>
+                                <span class="p-4">
+                                    <input class="contact-form__input contact-form__input--text" id="45" name="timer1h" type="number" min="0" max="24" value="0" / />
+                                </span>
+                            </div>
+                            <div class="contact-form__input-group" title="Timer jeden">
+                                <label class="contact-form__label" for="46">Minuta</label></br>
+                                <span class="p-4">
+                                    <input class="contact-form__input contact-form__input--text" id="46" name="timer1m" type="number" min="0" max="59" value="0" / />
+                                </span>
+                            </div>
+                            <div class="contact-form__input-group" title="Timer jeden">
+                                <label class="contact-form__label" for="47">Dzien</label></br>
+                                <span class="p-4">
+                                    <input class="contact-form__input contact-form__input--text" id="47" name="timer1day" type="number" min="0" max="32" value="0" / />
+                                </span>
+                            </div>
+                            <div class="contact-form__input-group" title="Timer jeden">
+                                <label class="contact-form__label" for="48">Miesiac</label></br>
+                                <span class="p-4">
+                                    <input class="contact-form__input contact-form__input--text" id="48" name="timer1month" type="number" min="0" max="12" value="0" / />
+                                </span>
+                            </div>
 
                     </div>
                 </div>
@@ -12326,7 +12350,12 @@
                         $("#41").prop("checked", true)
                     }
                     $("#44").val(JSON.stringify(res[0].nameDev).replaceAll("\"", ""));
-                    
+                    $("#45").val(JSON.stringify(res[2].timer1h));
+                    $("#46").val(JSON.stringify(res[2].timer1m));
+                    $("#47").val(JSON.stringify(res[2].timer1day));
+                    $("#48").val(JSON.stringify(res[2].timer1month));
+
+
                     //$("#").val(JSON.stringify(res[0].frameID));
                     //$("#").val(JSON.stringify(res[0].celsius));
 
@@ -12343,8 +12372,8 @@
                     //$('.user-list').removeClass('loading');        
                 });
         });
-        
-//dla testow
+
+        //dla testow
         const res2 = [
             {
                 "DevID": 2,

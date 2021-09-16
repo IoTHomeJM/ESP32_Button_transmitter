@@ -1,32 +1,4 @@
-
-//#include <Adafruit_SH1106.h>   // oled 1.3 cala
-#include <Adafruit_SSD1306.h>  // oled 0.9 cala
-#include <Arduino.h>
-#include <ArduinoOTA.h>
-#include <EEPROM.h>
-#include <Fonts/FreeSans12pt7b.h>
-#include <Fonts/FreeSans9pt7b.h>
-#include <Fonts/FreeSansBold18pt7b.h>
-#include <Fonts/FreeSansBold24pt7b.h>
-#include <LightDimmerESP32.h>
-#include <NTPClient.h>
-#include <OneButton.h>
-#include <OneWire.h>
-#include <SPI.h>
-#include <Sim800l.h>
-#include <SimpleTimer.h>
-#include <TimeLib.h>
-#include <WebServer.h>
-#include <WiFi.h>
-#include <WiFiUdp.h>
-#include <Wire.h>
-#include <esp32_can.h>
-#include <void.h>
-
-#include "RF24.h"
-#include "SPIFFS.h"
-#include "litetimers.h"
-#include "nRF24L01.h"
+#include "button_transmitter.h"
 
 int zaok = 5;          // zaokraglenia suwaka jasnosci na oled
 int dimActivNumb = 0;  //dla rysowania jasnosci na oled.
@@ -89,6 +61,7 @@ bool wifiSTAon = 0, wifiAPon = 1, buttonWIFIactived = 0, wifiAPconnected = 0, wi
 uint8_t wifiSTAonCN = 0;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 0, 60000);  // ntp
+int Timer1[4] = {0, 0, 0, 0};                                   //H,M,day,month
 //<--server
 
 //--> CAN-BUS
@@ -158,6 +131,9 @@ uint8_t bWIFIenable = 0;
 char timestr[10] = "--:--:--";
 char* Timestamp = strdup("575420400");
 
+int Qhour, Qminutes, Qsecounds, Qday, Qmonth;
+Qtimers tl1(1, 1, 7, 53);  // active, function, hour, minutes, day, montch
+
 boolean SW1TouchEnable = 0;  // aktywacja funkcji przycisku dotyku
 boolean SW1TouchActive = 0;  // dotyk uruchamia sie dopiero po inicjalizacji
 uint8_t SW1TouchVal = 255;
@@ -192,6 +168,7 @@ int timerWifiSTAcheck = 0, timerWifiSTACon = 0, timerServerON = 0, timerbuttonWI
 int FactorySetE = 37;
 int nameDevE = 2200;
 
+// active, function, hour, minutes, day, montch
 void setup() {
     //--> EEPROM
     Wire.begin(21, 22);  // sda, scl
@@ -525,6 +502,7 @@ void loop() {
     aktualnyCzas = millis();
     timer.run();
     LightDimmerESP32::update();
+
     if (SW1TouchActive == 1) {
         sprawdzSW1Touch();
         button.tick(SW1TouchPressed);
@@ -1150,6 +1128,10 @@ void konfiguracja() {
     wifiAPon = server.arg("wifiAPon").toInt();
     strcpy(Timestamp, server.arg("ttime").c_str());
     setTime(String(Timestamp).toInt() + 7200);
+    Timer1[0] = server.arg("timer1h").toInt();
+    Timer1[1] = server.arg("timer1m").toInt();
+    Timer1[2] = server.arg("timer1day").toInt();
+    Timer1[3] = server.arg("timer1month").toInt();
 
     create_json();
     server.send(200, "application/json", json);
@@ -1196,7 +1178,12 @@ void create_json() {
            "\",\"pass\":\"" + String(password) +
            "\",\"nameDev\":\"" + String(nameDev) +
            "\"},{\"frameID\":" + String(frameID) +
-           ",\"celsius\":" + String(celsius) + "}]";
+           ",\"celsius\":" + String(celsius) +
+           "},{\"timer1h\":" + String(Timer1[0]) +
+           ",\"timer1m\":" + String(Timer1[1]) +
+           "\"timer1day\":" + String(Timer1[2]) +
+           ",\"timer1month\":" + String(Timer1[3]) +
+           ",}]";
 }
 
 void handleRoot() {  // When URI / is requested, send a web page with a button
@@ -2045,12 +2032,18 @@ void rysujemy_na_lcd() {
 }
 
 void aktualizuj_timestr() {
-    timestr[0] = '0' + hour() / 10;
-    timestr[1] = '0' + hour() % 10;
-    timestr[3] = '0' + minute() / 10;
-    timestr[4] = '0' + minute() % 10;
-    timestr[6] = '0' + second() / 10;
-    timestr[7] = '0' + second() % 10;
+    Qhour = hour();
+    Qminutes = minute();
+    Qday = day();
+    Qmonth = month();
+    Qsecounds = second();
+    timestr[0] = '0' + Qhour / 10;
+    timestr[1] = '0' + Qhour % 10;
+    timestr[3] = '0' + Qminutes / 10;
+    timestr[4] = '0' + Qminutes % 10;
+    timestr[6] = '0' + Qsecounds / 10;
+    timestr[7] = '0' + Qsecounds % 10;
+    tl1.tdcomp();
 }
 
 void InicjacjaOdczytTemperatury() {
@@ -2258,6 +2251,59 @@ String mcADR() {
     String macADR = WiFi.macAddress();
     macADR.replace(":", "");
     return macADR;
+}
+
+Qtimers::Qtimers(int ac, int fu, int hr, int min, int d, int m) {
+    active = ac;
+    function = fu;
+
+    if (hr <= 24) {
+        hour = hr;
+    } else {
+        if (serialmode == 1) {
+            Serial.println("Litetimer - niewlasciwie podana godzina");
+        }
+    }
+    if (min <= 59) {
+        minutes = min;
+    } else {
+        if (serialmode == 1) {
+            Serial.println("Litetimer - niewlasciwie podana minuta");
+        }
+    }
+    if (d <= 31) {
+        day = d;
+    } else {
+        if (serialmode == 1) {
+            Serial.println("Litetimer - niewlasciwie podany dzien");
+        }
+    }
+    if (m <= 12) {
+        month = m;
+    } else {
+        if (serialmode == 1) {
+            Serial.println("Litetimer - niewlasciwie podany miesiac");
+        }
+    }
+}
+Qtimers::~Qtimers() {
+}
+
+void Qtimers::tdcomp() {
+    if (active == 1 && (month == 0 || month == Qmonth) && (day == 0 || day == Qday) && (hour == 0 || Qhour == hour) && (minutes == 0 || minutes == Qminutes)) {
+        if (serialmode == 1) {
+            Serial.println("Litetimer - tdcomp");
+        }
+        switch (function) {
+            case 1:
+                Serial.println("function1");
+                break;
+            case 2:
+                break;
+            case 3:
+                break;
+        }
+    }
 }
 
 // wymyslic kasowanie wiadomosci sms.
