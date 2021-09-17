@@ -23,7 +23,6 @@
 #include <Wire.h>
 #include <esp32_can.h>
 
-
 #include "RF24.h"
 #include "SPIFFS.h"
 #include "nRF24L01.h"
@@ -91,11 +90,12 @@ void timeNetUpdate();
 String mcADR();
 
 class Qtimers {
-    int active, function, hour, minutes, day, month;
+    int active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart,dayEnd, monthEnd;
 
    public:
-    Qtimers(int = 0, int = 0, int = 0, int = 0, int = 0, int = 0);  // konstruktor
-    // active, function, hour, minutes, day, montch
+           //active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart
+    Qtimers(int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0,int = 0, int = 0);  // konstruktor
+    
     ~Qtimers();  // destruktor
 
     void tdcomp(void);  //

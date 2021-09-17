@@ -273,9 +273,19 @@
             line-height: inherit
         }
 
+        .Qtime {
+
+            width: 65px;
+            border: 2px solid black;
+            border: 1px solid #d2cfcf;
+            border-radius: 10px;
+
+        }
+
         button,
         input {
-            overflow: visible
+            overflow: visible;
+            border-radius: 10px;
         }
 
         button,
@@ -12090,8 +12100,10 @@
                                 <input class="contact-form__input contact-form__input--radio" id="41" name="wifiAPon" type="radio" value="0" />
                             </div>
                             <div class="contact-form__input-group">
-                                <label class="contact-form__label">Nazwa urzadzenia:</label>
-                                <input class="contact-form__input contact-form__input--text" id="44" name="nameDev" type="text" value="" />
+                                <label class="contact-form__label">Nazwa urzadzenia:</label></br>
+                                <span class="p-4">
+                                    <input class="contact-form__input contact-form__input--text" id="44" name="nameDev" type="text" value="" />
+                                </span>
                             </div>
                     </div>
                     <div class="col-md-6 col-lg-6">
@@ -12172,31 +12184,62 @@
                                 <label class="contact-form__label contact-form__label--radio" for="2">NIE</label>
                                 <input class="contact-form__input contact-form__input--radio" id="2" name="LightOnBoot" type="radio" value="0" />
 
-                            </div>
+                            </div></br>
                             <div class="contact-form__input-group" title="Timer jeden">
-                                <label class="contact-form__label" for="45">Godzina</label></br>
-                                <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="45" name="timer1h" type="number" min="0" max="24" value="0" / />
-                                </span>
+                                <label class="contact-form__label">Timer 1 (Night Light):</label>
+                                <table style="width:330px">
+                                    <tr>
+                                        <th></th>
+                                        <th><label class="contact-form__label">Godzina</label></th>
+                                        <th><label class="contact-form__label">Minuta</label></th>
+                                        <th> <label class="contact-form__label">Dzien</label></th>
+                                        <th> <label class="contact-form__label">Miesiac</label></th>
+                                    </tr>
+                                    <tr>
+                                        <td>Start</td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text " id="45" name="timerS1h" type="number" min="0" max="24" value="0" /></td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text" id="46" name="timerS1m" type="number" min="0" max="59" value="0" /></td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text" id="47" name="timerS1day" type="number" min="0" max="32" value="0" /></td>
+                                        <td> <input class="Qtime contact-form__input contact-form__input--text" id="48" name="timerS1month" type="number" min="0" max="12" value="0" /></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Stop</td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text " id="49" name="timerE1h" type="number" min="0" max="24" value="0" /></td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text" id="50" name="timerE1m" type="number" min="0" max="59" value="0" /></td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text" id="51" name="timerE1day" type="number" min="0" max="32" value="0" /></td>
+                                        <td> <input class="Qtime contact-form__input contact-form__input--text" id="52" name="timerE1month" type="number" min="0" max="12" value="0" /></td>
+                                    </tr>
+                                </table>
+                            </div></br>
+
+                            <div class="contact-form__input-group" title="Timer dwa">
+                                <label class="contact-form__label">Timer 2:</label>
+                                <table style="width:330px">
+                                    <tr>
+                                        <th></th>
+                                        <th><label class="contact-form__label">Godzina</label></th>
+                                        <th><label class="contact-form__label">Minuta</label></th>
+                                        <th> <label class="contact-form__label">Dzien</label></th>
+                                        <th> <label class="contact-form__label">Miesiac</label></th>
+                                    </tr>
+                                    <tr>
+                                        <td>Start</td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text " id="53" name="timerS2h" type="number" min="0" max="24" value="0" /></td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text" id="54" name="timerS2m" type="number" min="0" max="59" value="0" /></td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text" id="55" name="timerS2day" type="number" min="0" max="32" value="0" /></td>
+                                        <td> <input class="Qtime contact-form__input contact-form__input--text" id="56" name="timerS2month" type="number" min="0" max="12" value="0" /></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Stop</td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text " id="57" name="timerE2h" type="number" min="0" max="24" value="0" /></td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text" id="58" name="timerE2m" type="number" min="0" max="59" value="0" /></td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text" id="59" name="timerE2day" type="number" min="0" max="32" value="0" /></td>
+                                        <td> <input class="Qtime contact-form__input contact-form__input--text" id="60" name="timerE2month" type="number" min="0" max="12" value="0" /></td>
+                                    </tr>
+                                </table>
                             </div>
-                            <div class="contact-form__input-group" title="Timer jeden">
-                                <label class="contact-form__label" for="46">Minuta</label></br>
-                                <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="46" name="timer1m" type="number" min="0" max="59" value="0" / />
-                                </span>
-                            </div>
-                            <div class="contact-form__input-group" title="Timer jeden">
-                                <label class="contact-form__label" for="47">Dzien</label></br>
-                                <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="47" name="timer1day" type="number" min="0" max="32" value="0" / />
-                                </span>
-                            </div>
-                            <div class="contact-form__input-group" title="Timer jeden">
-                                <label class="contact-form__label" for="48">Miesiac</label></br>
-                                <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="48" name="timer1month" type="number" min="0" max="12" value="0" / />
-                                </span>
-                            </div>
+
+
 
                     </div>
                 </div>
@@ -12350,10 +12393,25 @@
                         $("#41").prop("checked", true)
                     }
                     $("#44").val(JSON.stringify(res[0].nameDev).replaceAll("\"", ""));
-                    $("#45").val(JSON.stringify(res[2].timer1h));
-                    $("#46").val(JSON.stringify(res[2].timer1m));
-                    $("#47").val(JSON.stringify(res[2].timer1day));
-                    $("#48").val(JSON.stringify(res[2].timer1month));
+                    $("#45").val(JSON.stringify(res[2].timerS1h));
+                    $("#46").val(JSON.stringify(res[2].timerS1m));
+                    $("#47").val(JSON.stringify(res[2].timerS1day));
+                    $("#48").val(JSON.stringify(res[2].timerS1month));
+
+                    $("#49").val(JSON.stringify(res[2].timerE1h));
+                    $("#50").val(JSON.stringify(res[2].timerE1m));
+                    $("#51").val(JSON.stringify(res[2].timerE1day));
+                    $("#52").val(JSON.stringify(res[2].timerE1month));
+
+                    $("#53").val(JSON.stringify(res[2].timerS2h));
+                    $("#54").val(JSON.stringify(res[2].timerS2m));
+                    $("#55").val(JSON.stringify(res[2].timerS2day));
+                    $("#56").val(JSON.stringify(res[2].timerS2month));
+
+                    $("#57").val(JSON.stringify(res[2].timerE2h));
+                    $("#58").val(JSON.stringify(res[2].timerE2m));
+                    $("#59").val(JSON.stringify(res[2].timerE2day));
+                    $("#60").val(JSON.stringify(res[2].timerE2month));
 
 
                     //$("#").val(JSON.stringify(res[0].frameID));

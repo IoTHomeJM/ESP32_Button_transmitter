@@ -12,10 +12,10 @@ uint16_t FreqLED = 25000;     // czestotliwosc LED
 uint16_t ResolutionLED = 10;  // Rozdzielczosc w bitach.
 
 // zmiennych ponizej nie edytujemy
-// unsigned int jasnosc = 0, jasnosc2 = 0, jasnosc3 = 0;  // wykorzystywane do zapisywnie eeprom
-unsigned int jasnosc_last = 0;  // !! chyba nigdzie nie jest wykorzystywane
-unsigned int jasnosc_max = 0;   // !! chyba nigdzie nie jest wykorzystywane
-byte eepromBUF[64];             // bufor dla zapisu/odczytu eeprom
+// unsigned int jasnosc = 0, jasnosc2 = 0, jasnosc3 = 0;  // wykorzystywane do zapisywnie w eeprom
+// unsigned int jasnosc_last = 0;  // !! chyba nigdzie nie jest wykorzystywane
+// unsigned int jasnosc_max = 0;   // !! chyba nigdzie nie jest wykorzystywane
+byte eepromBUF[64];  // bufor dla zapisu/odczytu eeprom
 bool zapiszweeprom = 0;
 uint64_t aktualnyCzas = 0;
 uint64_t zapamietanyCzas1 = 0;
@@ -32,6 +32,7 @@ uint8_t DimUpDownResolution = 20;  // szybkosc regulacji jasnosci led za pomoca 
 int dimmsetNow[4] = {0};
 uint8_t numDIM = 0;
 int dimmsetLast[4] = {0};
+int dimmsetLastNL[4] = {7, 7, 7, 7};  // for night light function in Qtimers class
 int dimmsetMax[4] = {999, 999, 999, 999};
 int16_t dimmset_now = 0, dimmset_now2 = 0, dimmset_now3 = 0;
 // int16_t dimmset_last = 0, dimmset_last2 = 0, dimmset_last3 = 0;
@@ -61,7 +62,11 @@ bool wifiSTAon = 0, wifiAPon = 1, buttonWIFIactived = 0, wifiAPconnected = 0, wi
 uint8_t wifiSTAonCN = 0;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 0, 60000);  // ntp
-int Timer1[4] = {0, 0, 0, 0};                                   //H,M,day,month
+
+int TimerS1[4] = {0, 0, 0, 0};  // FOR Qtimer hour, minutes ,day ,month
+int TimerE1[4] = {0, 0, 0, 0};
+int TimerS2[4] = {0, 0, 0, 0};  // FOR Qtimer hour, minutes ,day ,month
+int TimerE2[4] = {0, 0, 0, 0};
 //<--server
 
 //--> CAN-BUS
@@ -1128,10 +1133,24 @@ void konfiguracja() {
     wifiAPon = server.arg("wifiAPon").toInt();
     strcpy(Timestamp, server.arg("ttime").c_str());
     setTime(String(Timestamp).toInt() + 7200);
-    Timer1[0] = server.arg("timer1h").toInt();
-    Timer1[1] = server.arg("timer1m").toInt();
-    Timer1[2] = server.arg("timer1day").toInt();
-    Timer1[3] = server.arg("timer1month").toInt();
+
+    TimerS1[0] = server.arg("timerS1h").toInt();
+    TimerS1[1] = server.arg("timerS1m").toInt();
+    TimerS1[2] = server.arg("timerS1day").toInt();
+    TimerS1[3] = server.arg("timerS1month").toInt();
+    TimerE1[0] = server.arg("timerS1h").toInt();
+    TimerE1[1] = server.arg("timerS1m").toInt();
+    TimerE1[2] = server.arg("timerS1day").toInt();
+    TimerE1[3] = server.arg("timerS1month").toInt();
+
+    TimerS2[0] = server.arg("timerS2h").toInt();
+    TimerS2[1] = server.arg("timerS2m").toInt();
+    TimerS2[2] = server.arg("timerS2day").toInt();
+    TimerS2[3] = server.arg("timerS2month").toInt();
+    TimerE2[0] = server.arg("timerS2h").toInt();
+    TimerE2[1] = server.arg("timerS2m").toInt();
+    TimerE2[2] = server.arg("timerS2day").toInt();
+    TimerE2[3] = server.arg("timerS2month").toInt();
 
     create_json();
     server.send(200, "application/json", json);
@@ -1179,10 +1198,24 @@ void create_json() {
            "\",\"nameDev\":\"" + String(nameDev) +
            "\"},{\"frameID\":" + String(frameID) +
            ",\"celsius\":" + String(celsius) +
-           "},{\"timer1h\":" + String(Timer1[0]) +
-           ",\"timer1m\":" + String(Timer1[1]) +
-           "\"timer1day\":" + String(Timer1[2]) +
-           ",\"timer1month\":" + String(Timer1[3]) +
+           "},{\"timerS1h\":" + String(TimerS1[0]) +
+           ",\"timerS1m\":" + String(TimerS1[1]) +
+           ",\"timerS1day\":" + String(TimerS1[2]) +
+           ",\"timerS1month\":" + String(TimerS1[3]) +
+           ",\"timerE1h\":" + String(TimerE1[0]) +
+           ",\"timerE1m\":" + String(TimerE1[1]) +
+           ",\"timerE1day\":" + String(TimerE1[2]) +
+           ",\"timerE1month\":" + String(TimerE1[3]) +
+
+           ",\"timerS2h\":" + String(TimerS2[0]) +
+           ",\"timerS2m\":" + String(TimerS2[1]) +
+           ",\"timerS2day\":" + String(TimerS2[2]) +
+           ",\"timerS2month\":" + String(TimerS2[3]) +
+           ",\"timerE2h\":" + String(TimerE2[0]) +
+           ",\"timerE2m\":" + String(TimerE2[1]) +
+           ",\"timerE2day\":" + String(TimerE2[2]) +
+           ",\"timerE2month\":" + String(TimerE2[3]) +
+
            ",}]";
 }
 
@@ -1267,14 +1300,16 @@ void oneClick0() {
     uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("oneClick");
     //pierwszy raz po reset
-    if (dimmsetNow[nrLED] == 0 && dimmsetLast[nrLED] == 0) {
+    /* if (dimmsetNow[nrLED] == 0 && dimmsetLast[nrLED] == 0) {
         dimmsetNow[nrLED] = dimmsetMax[nrLED];
         dimmsetLast[nrLED] = dimmsetNow[nrLED];
         // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
     //wlaczamy na poprzedni poziom
-    else if (dimmsetNow[nrLED] == 0) {
+    else */
+
+    if (dimmsetNow[nrLED] == 0) {
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
         // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
@@ -1336,15 +1371,17 @@ void oneClick1() {
 
     if (serialmode == 1) Serial.println("oneClick 1");
     //pierwszy raz po reset
-    if (dimmsetNow[nrLED] == 0 && dimmsetLast[nrLED] == 0) {
-        dimmsetNow[nrLED] = dimmsetMax[nrLED];
-        dimmsetLast[nrLED] = dimmsetNow[nrLED];
-        // jasnosc = dimmsetNow[nrLED];
-        jasnoscLED(nrLED, dimmsetNow[nrLED]);
+    // if (dimmsetNow[nrLED] == 0 && dimmsetLast[nrLED] == 0) {
+    //     dimmsetNow[nrLED] = dimmsetMax[nrLED];
+    //     dimmsetLast[nrLED] = dimmsetNow[nrLED];
+    //     // jasnosc = dimmsetNow[nrLED];
+    //     jasnoscLED(nrLED, dimmsetNow[nrLED]);
 
-    }
-    //wlaczamy na poprzedni poziom
-    else if (dimmsetNow[nrLED] == 0) {
+    // }
+    // //wlaczamy na poprzedni poziom
+    // else
+
+    if (dimmsetNow[nrLED] == 0) {
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
         // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
@@ -1392,27 +1429,29 @@ void LongPressStart1() {
 
 void oneClick2() {
     uint8_t nrLED = 2;
+
     if (serialmode == 1) Serial.println("oneClick");
     //pierwszy raz po reset
-    if (dimmsetNow[nrLED] == 0 && dimmsetLast[nrLED] == 0) {
+    /* if (dimmsetNow[nrLED] == 0 && dimmsetLast[nrLED] == 0) {
         dimmsetNow[nrLED] = dimmsetMax[nrLED];
         dimmsetLast[nrLED] = dimmsetNow[nrLED];
         // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
     //wlaczamy na poprzedni poziom
-    else if (dimmsetNow[nrLED] == 0) {
+    else */
+
+    if (dimmsetNow[nrLED] == 0) {
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
         // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
-    }
-    //wylaczamy
-    else if (dimmsetNow[nrLED] > 0 && dimmsetLast[nrLED] <= dimmsetNow[nrLED]) {
+    } else if (dimmsetNow[nrLED] > 0 && dimmsetLast[nrLED] <= dimmsetNow[nrLED]) {  //wylaczamy
         dimmsetNow[nrLED] = 0;
         // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
 }
+
 void DoubleClick2() {
     uint8_t nrLED = 2;
     if (serialmode == 1) Serial.println("DoubleClick");
@@ -2253,36 +2292,64 @@ String mcADR() {
     return macADR;
 }
 
-Qtimers::Qtimers(int ac, int fu, int hr, int min, int d, int m) {
+Qtimers::Qtimers(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, int ms, int de, int me) {
     active = ac;
     function = fu;
 
-    if (hr <= 24) {
-        hour = hr;
+    if (hrs <= 24) {
+        hourStart = hrs;
     } else {
         if (serialmode == 1) {
-            Serial.println("Litetimer - niewlasciwie podana godzina");
+            Serial.println("Litetimer - niewlasciwie podana godzina startu");
         }
     }
-    if (min <= 59) {
-        minutes = min;
+    if (hre <= 24) {
+        hourEnd = hre;
     } else {
         if (serialmode == 1) {
-            Serial.println("Litetimer - niewlasciwie podana minuta");
+            Serial.println("Litetimer - niewlasciwie podana godzina konca");
         }
     }
-    if (d <= 31) {
-        day = d;
+    if (mins <= 59) {
+        minutesStart = mins;
     } else {
         if (serialmode == 1) {
-            Serial.println("Litetimer - niewlasciwie podany dzien");
+            Serial.println("Litetimer - niewlasciwie podana minuta startu");
         }
     }
-    if (m <= 12) {
-        month = m;
+    if (mine <= 59) {
+        minutesEnd = mine;
     } else {
         if (serialmode == 1) {
-            Serial.println("Litetimer - niewlasciwie podany miesiac");
+            Serial.println("Litetimer - niewlasciwie podana minuta konca");
+        }
+    }
+    if (ds <= 31) {
+        dayStart = ds;
+    } else {
+        if (serialmode == 1) {
+            Serial.println("Litetimer - niewlasciwie podany dzien startu");
+        }
+    }
+    if (de <= 31) {
+        dayEnd = de;
+    } else {
+        if (serialmode == 1) {
+            Serial.println("Litetimer - niewlasciwie podany dzien konca");
+        }
+    }
+    if (ms <= 12) {
+        monthStart = ms;
+    } else {
+        if (serialmode == 1) {
+            Serial.println("Litetimer - niewlasciwie podany miesiac startu");
+        }
+    }
+    if (me <= 12) {
+        monthEnd = me;
+    } else {
+        if (serialmode == 1) {
+            Serial.println("Litetimer - niewlasciwie podany miesiac konca");
         }
     }
 }
@@ -2290,25 +2357,44 @@ Qtimers::~Qtimers() {
 }
 
 void Qtimers::tdcomp() {
-    if (active == 1 && (month == 0 || month == Qmonth) && (day == 0 || day == Qday) && (hour == 0 || Qhour == hour) && (minutes == 0 || minutes == Qminutes)) {
-        if (serialmode == 1) {
-            Serial.println("Litetimer - tdcomp");
-        }
-        switch (function) {
-            case 1:
-                Serial.println("function1");
-                break;
-            case 2:
-                break;
-            case 3:
-                break;
+    bool GE = 0;
+    if (active == 1) {
+        if (GE == 0 && (monthStart == 0 || monthStart == Qmonth) && (dayStart == 0 || dayStart == Qday) && (hourStart == 0 || hourStart == Qhour) && (minutesStart == 0 || minutesStart == Qminutes)) {
+            GE = 1;
+            if (serialmode == 1) Serial.print("Qtimer - tdcomp START ");
+            switch (function) {
+                case 1:  // dim1 night light
+                    dimmsetLast[0] = dimmsetLastNL[0];
+                    dimmsetLast[1] = dimmsetLastNL[1];
+                    dimmsetLast[2] = dimmsetLastNL[2];
+                    if (serialmode == 1) Serial.println("night light ON - dim 1,2,3");
+                    break;
+                case 2:
+                    break;
+                case 3:
+                    break;
+            }
+        } else if (GE == 1 && (monthEnd == 0 || monthEnd == Qmonth) && (dayEnd == 0 || dayEnd == Qday) && (hourEnd == 0 || hourEnd == Qhour) && (minutesEnd == 0 || minutesEnd == Qminutes)) {
+            GE = 0;
+            if (serialmode == 1) Serial.print("Qtimer - tdcomp END ");
+            switch (function) {
+                case 1:
+                    dimmsetLast[0] = readEEPROM(0) * 256 + readEEPROM(1);
+                    dimmsetLast[1] = readEEPROM(6) * 256 + readEEPROM(7);
+                    dimmsetLast[2] = readEEPROM(8) * 256 + readEEPROM(9);
+                    if (serialmode == 1) Serial.println("night light OFF - dim 1,2,3");
+                    break;
+                case 2:
+                    break;
+                case 3:
+                    break;
+            }
         }
     }
 }
 
 // wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
-//  WiFi.macAddress() jako nazwa urzadzenia?`1`1
 // ustawienie dodatkowe aby od godziny np 23 / w nocy wlaczalo swiatlo na minimalny poziom. ale chyba to ustawienie do mastera.
 // dokonczyc przetestowac can.
 // napisac funkcje do doladowywania/ wysylania specjalnych sms w celu wlaczenia uslugi np dodatkowe sms.
