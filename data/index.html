@@ -282,6 +282,25 @@
 
         }
 
+        .formint {
+            width: 65px;
+            border-radius: 10px;
+        }
+
+        .fordim {
+            position: relative;
+            left: 25px;
+        }
+
+        .fornightl {
+            position: relative;
+            left: 40px;
+        }
+
+
+
+
+
         button,
         input {
             overflow: visible;
@@ -11939,25 +11958,25 @@
             <p class="m-5 "></p>
             <form class="" id="contactForm1" action="/config" method="POST">
                 <div class="row">
-                    <div class="col-md-6 col-lg-6 ">
+                    <div class=" col-md-6 col-lg-6 ">
                         <h3 class="text-center text-uppercase text-light mb-0">CAN-BUS:</h2>
 
-                            <div class="contact-form__input-group">
+                            <div class=" contact-form__input-group">
                                 <label class="contact-form__label" for="14">ID urządzenia (0-255, 0-CAN wylaczony, 1 to master):</label></br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="14" name="DevID" type="number" min="0" max="255" value="0" />
+                                    <input class="formint contact-form__input contact-form__input--text" id="14" name="DevID" type="number" min="0" max="255" value="0" />
                                 </span>
                             </div>
                             <div class="contact-form__input-group">
                                 <label class="contact-form__label" for="15">Sub ID urządzenia (0-15, 0-brak):</label></br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="15" name="SubDevID" type="number" min="0" max="15" value="0" />
+                                    <input class="formint contact-form__input contact-form__input--text" id="15" name="SubDevID" type="number" min="0" max="15" value="0" />
                                 </span>
                             </div>
                             <div class="contact-form__input-group">
                                 <label class="contact-form__label" for="16">Flag (0-1, 0-brak):</label></br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="16" name="Flag" type="number" min="0" max="1" value="0" />
+                                    <input class="formint contact-form__input contact-form__input--text" id="16" name="Flag" type="number" min="0" max="1" value="0" />
                                 </span>
                             </div>
                             <div class="contact-form__input-group">
@@ -11998,13 +12017,13 @@
                             <div class="contact-form__input-group">
                                 <label class="contact-form__label" for="23">Kanał (1-125, 1-domyślny):</label></br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="23" name="NRFchannel" type="number" min="1" max="125" value="1" />
+                                    <input class="formint contact-form__input contact-form__input--text" id="23" name="NRFchannel" type="number" min="1" max="125" value="1" />
                                 </span>
                             </div>
                             <div class="contact-form__input-group">
                                 <label class="contact-form__label" for="36">Adres tego urzadzenia (1-255):</label></br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="36" name="RF24_rxAddr" type="number" min="1" max="255" value="1" />
+                                    <input class="formint contact-form__input contact-form__input--text" id="36" name="RF24_rxAddr" type="number" min="1" max="255" value="1" />
                                 </span>
                             </div>
 
@@ -12017,14 +12036,14 @@
                             <div class="contact-form__input-group">
                                 <label class="contact-form__label" for="37">Opoznienie wyl. przekaznika 1 (w S, 0-wyl):</label></br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="37" name="relayToff1" type="number" min="0" max="65535" value="0" />
+                                    <input class="formint contact-form__input contact-form__input--text" id="37" name="relayToff1" type="number" min="0" max="65535" value="0" />
                                 </span>
                             </div>
 
                             <div class="contact-form__input-group">
                                 <label class="contact-form__label" for="38">Opoznienie wyl. przekaznika 2 (w S, 0-wyl):</label></br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="38" name="relayToff2" type="number" min="0" max="65535" value="0" />
+                                    <input class="formint contact-form__input contact-form__input--text" id="38" name="relayToff2" type="number" min="0" max="65535" value="0" />
                                 </span>
                             </div>
 
@@ -12122,7 +12141,7 @@
                                 <label class="contact-form__label">NIE AKTYWNE Czestotliwosc LED (Hz)</label></br>
                                 <span class="p-4">
 
-                                    <input class="contact-form__input contact-form__input--text" id="12" name="FreqLED" type="number" value="25000" />
+                                    <input class="formint contact-form__input contact-form__input--text" id="12" name="FreqLED" type="number" value="25000" />
 
 
                                 </span>
@@ -12130,46 +12149,54 @@
                             <div class="contact-form__input-group">
                                 <label class="contact-form__label" for="11">Czas na zapamietanie nowej jasnosci (mili sekund):</label></br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="11" name="czasnazapisweeprom" type="number" value="6000" />
+                                    <input class="formint contact-form__input contact-form__input--text" id="11" name="czasnazapisweeprom" type="number" value="6000" />
                                 </span>
                             </div>
                             <div class="contact-form__input-group">
                                 <label class="contact-form__label" for="28" title="Ustawienie ostatnio zapamietanej jasnosci zapisuje do eeprom">Jasnosc1</label>
-                                <span class="float-sm-right"><label class="contact-form__label" for="29" title="Ustawia maksymalna wartosc rozjasniania.">dimmset_max</label></span></br>
+                                <label class="fordim contact-form__label" for="29" title="Ustawia maksymalna wartosc rozjasniania.">Dimmset_max</label>
+                                <label class="fornightl contact-form__label" for="61" title="Ustawia maksymalna wartosc rozjasniania w nocy.">Night light1</label>
+                                </br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="28" name="jasnosc1" type="number" min="0" max="1023" value="0" />
+                                    <input class="formint contact-form__input contact-form__input--text" id="28" name="jasnosc1" type="number" min="0" max="1023" value="0" />
                                 </span>
-                                <span class="float-sm-right">
-                                    <input class="contact-form__input contact-form__input--text" id="29" name="dimmset_max" type="number" min="0" max="999" value="300" />
-                                </span>
+
+                                <input class="formint contact-form__input contact-form__input--text" id="29" name="dimmset_max" type="number" min="0" max="999" value="300" />
+                                <input class="fornightl formint contact-form__input contact-form__input--text" id="61" name="dimmsetLastNL0" type="number" min="0" max="999" value="10" />
+
                             </div>
 
                             <div class="contact-form__input-group">
                                 <label class="contact-form__label" for="30" title="Ustawienie ostatnio zapamietanej jasnosci zapisuje do eeprom">Jasnosc2</label>
-                                <span class="float-sm-right"><label class="contact-form__label" for="33" title="Ustawia maksymalna wartosc rozjasniania.">dimm2set_max</label></span></br>
+                                <label class="fordim contact-form__label" for="33" title="Ustawia maksymalna wartosc rozjasniania.">Dimm2set_max</label>
+                                <label class="fornightl contact-form__label" for="62" title="Ustawia maksymalna wartosc rozjasniania w nocy.">Night light2</label>
+                                </br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="30" name="jasnosc2" type="number" min="0" max="1023" value="0" />
+                                    <input class="formint contact-form__input contact-form__input--text" id="30" name="jasnosc2" type="number" min="0" max="1023" value="0" />
                                 </span>
-                                <span class="float-sm-right">
-                                    <input class="contact-form__input contact-form__input--text" id="33" name="dimm2set_max" type="number" min="0" max="999" value="300" />
-                                </span>
+
+                                <input class="formint contact-form__input contact-form__input--text" id="33" name="dimm2set_max" type="number" min="0" max="999" value="300" />
+                                <input class="fornightl formint contact-form__input contact-form__input--text" id="62" name="dimmsetLastNL1" type="number" min="0" max="999" value="10" />
+
                             </div>
 
                             <div class="contact-form__input-group">
                                 <label class="contact-form__label" for="31" title="Ustawienie ostatnio zapamietanej jasnosci zapisuje do eeprom">Jasnosc3</label>
-                                <span class="float-sm-right"><label class="contact-form__label" for="34" title="Ustawia maksymalna wartosc rozjasniania.">dimm3set_max</label></span></br>
+                                <label class="fordim contact-form__label" for="34" title="Ustawia maksymalna wartosc rozjasniania.">Dimm3set_max</label>
+                                <label class="fornightl contact-form__label" for="63" title="Ustawia maksymalna wartosc rozjasniania.">Night light2</label>
+                                </br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="31" name="jasnosc3" type="number" min="0" max="1023" value="0" />
+                                    <input class="formint contact-form__input contact-form__input--text" id="31" name="jasnosc3" type="number" min="0" max="1023" value="0" />
                                 </span>
-                                <span class="float-sm-right">
-                                    <input class="contact-form__input contact-form__input--text" id="34" name="dimm3set_max" type="number" min="0" max="999" value="300" />
-                                </span>
+
+                                <input class="formint contact-form__input contact-form__input--text" id="34" name="dimm3set_max" type="number" min="0" max="999" value="300" />
+                                <input class="fornightl formint contact-form__input contact-form__input--text" id="63" name="dimmsetLastNL2" type="number" min="0" max="999" value="10" />
                             </div>
 
                             <div class="contact-form__input-group" title="Szybkosc regulacji jasnosci LED za pomoca przycisku">
                                 <label class="contact-form__label" for="32">DimUpDownResolutionSW (0-40)</label></br>
                                 <span class="p-4">
-                                    <input class="contact-form__input contact-form__input--text" id="32" name="DimUpDownResolution" type="number" min="0" max="40" value="20" / />
+                                    <input class="formint contact-form__input contact-form__input--text" id="32" name="DimUpDownResolution" type="number" min="0" max="40" value="20" / />
                                 </span>
                             </div>
 
@@ -12186,7 +12213,18 @@
 
                             </div></br>
                             <div class="contact-form__input-group" title="Timer jeden">
-                                <label class="contact-form__label">Timer 1 (Night Light):</label>
+                                <label class="contact-form__label">Timer 1 (Night Light):</label></br>
+                                <span class="p-4">
+                                    <label class="contact-form__label contact-form__label--radio " for="64">Włączony</label>
+                                    <input class="contact-form__input contact-form__input--radio" id="64" name="timer1on" type="radio" value="1" />
+                                </span>
+
+                                <label class="contact-form__label contact-form__label--radio" for="65">Wyłączony</label>
+                                <input class="contact-form__input contact-form__input--radio" id="65" name="timer1on" type="radio" value="0" />
+
+                                <!-- $("#64").val(JSON.stringify(res[2].timer1on));
+                                $("#65").val(JSON.stringify(res[2].timer2on)); -->
+
                                 <table style="width:330px">
                                     <tr>
                                         <th></th>
@@ -12213,7 +12251,16 @@
                             </div></br>
 
                             <div class="contact-form__input-group" title="Timer dwa">
-                                <label class="contact-form__label">Timer 2:</label>
+                                <label class="contact-form__label">Timer 2:</label></br>
+                                <span class="p-4">
+                                    <label class="contact-form__label contact-form__label--radio " for="66">Włączony</label>
+                                    <input class="contact-form__input contact-form__input--radio" id="66" name="timer2on" type="radio" value="1" />
+                                </span>
+
+                                <label class="contact-form__label contact-form__label--radio" for="67">Wyłączony</label>
+                                <input class="contact-form__input contact-form__input--radio" id="67" name="timer2on" type="radio" value="0" />
+
+
                                 <table style="width:330px">
                                     <tr>
                                         <th></th>
@@ -12412,6 +12459,23 @@
                     $("#58").val(JSON.stringify(res[2].timerE2m));
                     $("#59").val(JSON.stringify(res[2].timerE2day));
                     $("#60").val(JSON.stringify(res[2].timerE2month));
+
+                    $("#61").val(JSON.stringify(res[2].dimmsetLastNL0));
+                    $("#62").val(JSON.stringify(res[2].dimmsetLastNL1));
+                    $("#63").val(JSON.stringify(res[2].dimmsetLastNL2));
+
+                    if (JSON.stringify(res[2].timer1on) == "1") {
+                        $("#64").prop("checked", true);
+                    } else {
+                        $("#65").prop("checked", true)
+                    }
+                    if (JSON.stringify(res[2].timer2on) == "1") {
+                        $("#66").prop("checked", true);
+                    } else {
+                        $("#67").prop("checked", true)
+                    }
+
+
 
 
                     //$("#").val(JSON.stringify(res[0].frameID));

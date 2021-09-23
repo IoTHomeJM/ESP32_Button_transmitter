@@ -90,14 +90,16 @@ void timeNetUpdate();
 String mcADR();
 
 class Qtimers {
-    int active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart,dayEnd, monthEnd;
+    int active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart, dayEnd, monthEnd;
+    bool GE = 0;
 
    public:
-           //active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart
-    Qtimers(int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0,int = 0, int = 0);  // konstruktor
-    
+    //active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart
+    Qtimers(int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0);  // konstruktor
+
     ~Qtimers();  // destruktor
 
     void tdcomp(void);  //
+    void set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, int ms, int de, int me);
 };
 #endif
