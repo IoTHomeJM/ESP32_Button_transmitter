@@ -40,21 +40,23 @@ void css_css();
 void create_json();
 void handleRoot();
 void handleLogin();
-void zmiana_poziomu_jasnosci(uint16_t nrLED);
+// void zmiana_poziomu_jasnosci(uint16_t nrLED);
 
 void oneClick0();
 void DoubleClick0();
 void LongPressStart0();
+void LongPressStop0();
 
 void oneClick1();
 void DoubleClick1();
 void LongPressStart1();
+void LongPressStop1();
 
 void oneClick2();
 void DoubleClick2();
 void LongPressStart2();
+void LongPressStop2();
 
-void LongPressStop();
 // void jasnoscLED();
 void jasnoscLED(uint8_t nrLED, uint16_t jas);
 void DimmWriteEEPROM();
@@ -96,10 +98,25 @@ class Qtimers {
    public:
     //active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart
     Qtimers(int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0);  // konstruktor
-
-    ~Qtimers();  // destruktor
+    ~Qtimers();                                                                                         // destruktor
 
     void tdcomp(void);  //
     void set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, int ms, int de, int me);
+};
+class Dimlevel {
+   private:
+    uint64_t zapamietanyCzas1 = 0;
+    uint64_t zapamietanyCzas2 = 0;
+    bool DLbutton_is_long_pressed = 0;
+    int nrLED = 0;
+    bool dimming_up = 0;
+
+   public:
+    Dimlevel(int = 0);  // konstruktor
+    ~Dimlevel();        // destruktor
+
+    void start();
+    void stop();
+    void change();
 };
 #endif

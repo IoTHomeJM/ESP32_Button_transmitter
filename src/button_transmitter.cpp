@@ -130,8 +130,9 @@ OneButton button(SW1pin, true);   //SW1pin
 OneButton button1(SW2pin, true);  //SW2pin
 OneButton button2(SW3pin, true);
 OneButton button3(SW4pin, true);
-bool button_is_long_pressed = 0;
-bool dimming_up = 0;
+Dimlevel dl0(0), dl1(1), dl2(2);
+// bool button_is_long_pressed = 0;
+// bool dimming_up = 0;
 bool poRestarcieTestSW1 = 1;
 uint8_t bWIFIenable = 0;
 char timestr[10] = "--:--:--";
@@ -371,23 +372,23 @@ void setup() {
     button.attachClick(oneClick0);
     button.attachDoubleClick(DoubleClick0);
     button.attachLongPressStart(LongPressStart0);
-    button.attachLongPressStop(LongPressStop);
+    button.attachLongPressStop(LongPressStop0);
 
     button1.attachClick(oneClick1);
     button1.attachDoubleClick(DoubleClick1);
     button1.attachLongPressStart(LongPressStart1);
-    button1.attachLongPressStop(LongPressStop);
+    button1.attachLongPressStop(LongPressStop1);
 
     button2.attachClick(oneClick2);
     button2.attachDoubleClick(DoubleClick2);
     button2.attachLongPressStart(LongPressStart2);
-    button2.attachLongPressStop(LongPressStop);
+    button2.attachLongPressStop(LongPressStop2);
 
     // button 3 (fizycznie 4) narazie nie obslugiwany
     button3.attachClick(oneClick0);
     button3.attachDoubleClick(DoubleClick0);
     button3.attachLongPressStart(LongPressStart0);
-    button3.attachLongPressStop(LongPressStop);
+    button3.attachLongPressStop(LongPressStop0);
     //--> dla oled 0.9 cala // Address 0x3D for 128x64
 
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
@@ -461,16 +462,6 @@ void setup() {
         return;
     }  // inicjowanie systemu plikow SPI
 
-    // setTime((1629961343959 / 1000) + 7200);  // ustawia zegarek
-
-    if (ServerActive == 1) {
-        // wifiapstart();
-        wifiSTAstart();
-    } else {
-        wificlose();
-        setCpuFrequencyMhz(80);
-    }
-
     //// TIMERY ////
     ///////////////
 
@@ -524,8 +515,9 @@ void setup() {
     } else {
         tl2.set(1, 1, TimerS1[0], TimerS1[1], TimerE1[0], TimerE1[1], TimerS1[2], TimerS1[3], TimerE1[2], TimerE1[3]);
     }
-
-    if (ServerActive != 1) {
+    if (ServerActive == 1) {
+        wifiSTAstart();
+    } else {
         setCpuFrequencyMhz(80);
     }
 }
@@ -550,9 +542,12 @@ void loop() {
     readCAN();
     readNRF();
     relaydimonoff();
-    if (button_is_long_pressed == 1) {
-        zmiana_poziomu_jasnosci(numDIM);
-    }
+    // if (button_is_long_pressed == 1) {
+    //     zmiana_poziomu_jasnosci(numDIM);
+    // }
+    dl0.change();
+    dl1.change();
+    dl2.change();
 
     if (OTAActive == 1) {
         ArduinoOTA.handle();
@@ -1320,50 +1315,6 @@ void handleLogin() {
 
 //<-- server
 
-void zmiana_poziomu_jasnosci(uint16_t nrLED) {
-    static uint64_t zapamietanyCzas1 = 0;
-    static uint64_t zapamietanyCzas2 = 0;
-    // dimmset_now = dimmsetLast[nrLED];
-    if (aktualnyCzas - zapamietanyCzas2 >= 2000UL) {
-        if (aktualnyCzas - zapamietanyCzas1 >= 200UL) {
-            zapamietanyCzas1 = aktualnyCzas;
-
-            if (dimming_up) {
-                if (dimmsetNow[nrLED] < 15) {
-                    dimmsetNow[nrLED] += 1;
-                } else if ((dimmsetNow[nrLED] >= 15) && (dimmsetNow[nrLED] <= 40)) {
-                    dimmsetNow[nrLED] += 5;
-                } else {
-                    dimmsetNow[nrLED] += DimUpDownResolution;
-                }
-            } else {
-                if (dimmsetNow[nrLED] < 15) {
-                    dimmsetNow[nrLED] -= 1;
-                } else if ((dimmsetNow[nrLED] >= 15) && (dimmsetNow[nrLED] <= 40)) {
-                    dimmsetNow[nrLED] -= 5;
-                } else {
-                    dimmsetNow[nrLED] -= DimUpDownResolution;
-                }
-            }
-
-            if (dimmsetNow[nrLED] > dimmsetMax[nrLED]) {
-                dimmsetNow[nrLED] = dimmsetMax[nrLED];
-                zapamietanyCzas2 = aktualnyCzas;
-            }
-            if (dimmsetNow[nrLED] < dimmset_min) {
-                dimmsetNow[nrLED] = dimmset_min;
-                zapamietanyCzas2 = aktualnyCzas;
-            }
-            if (QtNightLightON == 0) dimmsetLast[nrLED] = dimmsetNow[nrLED];
-
-            jasnoscLED(nrLED, dimmsetNow[nrLED]);
-        }
-        if (dimmsetNow[nrLED] >= dimmsetMax[nrLED] || dimmsetNow[nrLED] <= dimmset_min) {
-            dimming_up = !dimming_up;
-        }
-    }
-}
-
 void oneClick0() {
     if (bWIFIenable == 5) {
         buttonWIFIenable();
@@ -1439,8 +1390,11 @@ void LongPressStart0() {
     }
     uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("LongPressStart");
-    button_is_long_pressed = 1;
+    dl0.start();
     numDIM = nrLED;
+}
+void LongPressStop0() {
+    dl0.stop();
 }
 
 void oneClick1() {
@@ -1500,8 +1454,11 @@ void DoubleClick1() {
 void LongPressStart1() {
     uint8_t nrLED = 1;
     if (serialmode == 1) Serial.println("LongPressStart");
-    button_is_long_pressed = 1;
+    dl1.start();
     numDIM = nrLED;
+}
+void LongPressStop1() {
+    dl1.stop();
 }
 
 void oneClick2() {
@@ -1555,12 +1512,12 @@ void DoubleClick2() {
 void LongPressStart2() {
     uint8_t nrLED = 2;
     if (serialmode == 1) Serial.println("LongPressStart");
-    button_is_long_pressed = 1;
+    dl2.start();
     numDIM = nrLED;
 }
-void LongPressStop() {
+void LongPressStop2() {
     if (serialmode == 1) Serial.println("LongPressStop");
-    button_is_long_pressed = 0;
+    dl2.stop();
 }
 
 //<-- DLA dimmer
@@ -2528,7 +2485,62 @@ void Qtimers::tdcomp() {
         }
     }
 }
+Dimlevel::Dimlevel(int nl) {
+    nrLED = nl;
+}
+Dimlevel::~Dimlevel() {
+}
+void Dimlevel::start() {
+    DLbutton_is_long_pressed = 1;
+}
+void Dimlevel::stop() {
+    DLbutton_is_long_pressed = 0;
+}
+void Dimlevel::change() {
+    if (DLbutton_is_long_pressed == 1) {
+        zapamietanyCzas1 = 0;
+        zapamietanyCzas2 = 0;
+        // dimmset_now = dimmsetLast[nrLED];
+        if (aktualnyCzas - zapamietanyCzas2 >= 2000UL) {
+            if (aktualnyCzas - zapamietanyCzas1 >= 200UL) {
+                zapamietanyCzas1 = aktualnyCzas;
 
+                if (dimming_up) {
+                    if (dimmsetNow[nrLED] < 15) {
+                        dimmsetNow[nrLED] += 1;
+                    } else if ((dimmsetNow[nrLED] >= 15) && (dimmsetNow[nrLED] <= 40)) {
+                        dimmsetNow[nrLED] += 5;
+                    } else {
+                        dimmsetNow[nrLED] += DimUpDownResolution;
+                    }
+                } else {
+                    if (dimmsetNow[nrLED] < 15) {
+                        dimmsetNow[nrLED] -= 1;
+                    } else if ((dimmsetNow[nrLED] >= 15) && (dimmsetNow[nrLED] <= 40)) {
+                        dimmsetNow[nrLED] -= 5;
+                    } else {
+                        dimmsetNow[nrLED] -= DimUpDownResolution;
+                    }
+                }
+
+                if (dimmsetNow[nrLED] > dimmsetMax[nrLED]) {
+                    dimmsetNow[nrLED] = dimmsetMax[nrLED];
+                    zapamietanyCzas2 = aktualnyCzas;
+                }
+                if (dimmsetNow[nrLED] < dimmset_min) {
+                    dimmsetNow[nrLED] = dimmset_min;
+                    zapamietanyCzas2 = aktualnyCzas;
+                }
+                if (QtNightLightON == 0) dimmsetLast[nrLED] = dimmsetNow[nrLED];
+
+                jasnoscLED(nrLED, dimmsetNow[nrLED]);
+            }
+            if (dimmsetNow[nrLED] >= dimmsetMax[nrLED] || dimmsetNow[nrLED] <= dimmset_min) {
+                dimming_up = !dimming_up;
+            }
+        }
+    }
+}
 // wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
 // dokonczyc przetestowac can.
