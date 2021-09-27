@@ -11,10 +11,6 @@ unsigned int czasnazapisweeprom = 6000;  //w milisekundach, 6 sekund, w przypadk
 uint16_t FreqLED = 25000;     // czestotliwosc LED
 uint16_t ResolutionLED = 10;  // Rozdzielczosc w bitach.
 
-// zmiennych ponizej nie edytujemy
-// unsigned int jasnosc = 0, jasnosc2 = 0, jasnosc3 = 0;  // wykorzystywane do zapisywnie w eeprom
-// unsigned int jasnosc_last = 0;  // !! chyba nigdzie nie jest wykorzystywane
-// unsigned int jasnosc_max = 0;   // !! chyba nigdzie nie jest wykorzystywane
 byte eepromBUF[64];  // bufor dla zapisu/odczytu eeprom
 bool zapiszweeprom = 0;
 uint64_t aktualnyCzas = 0;
@@ -36,8 +32,6 @@ int dimmsetLast[4] = {0};
 int dimmsetLastNL[4] = {7, 7, 7, 7};  // for night light function in Qtimers class
 int dimmsetMax[4] = {999, 999, 999, 999};
 int16_t dimmset_now = 0, dimmset_now2 = 0, dimmset_now3 = 0;
-// int16_t dimmset_last = 0, dimmset_last2 = 0, dimmset_last3 = 0;
-// int16_t dimmset_max = 999, dimm2set_max = 999, dimm3set_max = 999;
 
 int16_t dimmset_min = 2;
 
@@ -47,13 +41,10 @@ boolean ServerActive = 1;
 
 char* ssidAP = strdup("SW");              // Enter SSID here
 char* passwordAP = strdup("1234567890");  // Enter Password here
-// char* ssid = strdup("NET2");
-// char* password = strdup("Janek1Ewa2-s7");
-// char* ssid = strdup("JLU");
-//char* password = strdup("1234567890");
 char* ssid = strdup("NET");
 char* password = strdup("Janek1@$Eva");
-char* ssidF = strdup("JLU");
+
+char* ssidF = strdup("JLU");// drugie dane wifi. proba laczenia po 4 razie
 char* passwordF = strdup("1234567890");
 char* hostname = strdup("1234567890");
 // String hostname = "SW";
@@ -188,9 +179,7 @@ void setup() {
         for (int i = 0; i < 64; ++i) {
             eepromBUF[i] = readEEPROM(i);
         }  // read 64 byte eeprom
-        // jasnosc = eepromBUF[0] * 256 + eepromBUF[1];
-        // jasnosc2 = eepromBUF[6] * 256 + eepromBUF[7];
-        // jasnosc3 = eepromBUF[8] * 256 + eepromBUF[9];
+        
         dimmsetLast[0] = eepromBUF[0] * 256 + eepromBUF[1];
         dimmsetLast[1] = eepromBUF[6] * 256 + eepromBUF[7];
         dimmsetLast[2] = eepromBUF[8] * 256 + eepromBUF[9];
@@ -234,7 +223,6 @@ void setup() {
         timer2on = eepromBUF[61];
         timer1on = eepromBUF[60];
     }
-    //dimmset_now = jasnosc;
 
     // konfikuracja poczatkowa przekaznika
     pinMode(relay[0], OUTPUT);
@@ -350,6 +338,7 @@ void setup() {
     //<--
     */
     //--> CAN-BUS
+
     if (CAN0.begin(500000)) {  // predkosc CAN-BUS
         if (allFrame == 0) {
             CAN0.setRXFilter(DevID, 0x000000FF, true);  // przyjmuje ramki tylko o danym ID
@@ -365,9 +354,9 @@ void setup() {
             Serial.println("CAN init failed…");
         }
     }
+
     //<-- CAN-BUS
 
-    // dimmsetMax[0] -= 1; // !! ??
 
     button.attachClick(oneClick0);
     button.attachDoubleClick(DoubleClick0);
@@ -539,13 +528,10 @@ void loop() {
         button2.tick();
         button3.tick();
     }
-    readCAN();
+    if (DevID > 0) readCAN();
     readNRF();
     relaydimonoff();
-    // if (button_is_long_pressed == 1) {
-    //     zmiana_poziomu_jasnosci(numDIM);
-    // }
-    dl0.change();
+    dl0.change();  //dim level
     dl1.change();
     dl2.change();
 
@@ -1327,15 +1313,6 @@ void oneClick0() {
     }
     uint8_t nrLED = 0;
     if (serialmode == 1) Serial.println("oneClick");
-    //pierwszy raz po reset
-    /* if (dimmsetNow[nrLED] == 0 && dimmsetLast[nrLED] == 0) {
-        dimmsetNow[nrLED] = dimmsetMax[nrLED];
-        dimmsetLast[nrLED] = dimmsetNow[nrLED];
-        // jasnosc = dimmsetNow[nrLED];
-        jasnoscLED(nrLED, dimmsetNow[nrLED]);
-    }
-    //wlaczamy na poprzedni poziom
-    else */
 
     if (dimmsetNow[nrLED] == 0) {
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
@@ -1401,16 +1378,6 @@ void oneClick1() {
     uint8_t nrLED = 1;
 
     if (serialmode == 1) Serial.println("oneClick 1");
-    //pierwszy raz po reset
-    // if (dimmsetNow[nrLED] == 0 && dimmsetLast[nrLED] == 0) {
-    //     dimmsetNow[nrLED] = dimmsetMax[nrLED];
-    //     dimmsetLast[nrLED] = dimmsetNow[nrLED];
-    //     // jasnosc = dimmsetNow[nrLED];
-    //     jasnoscLED(nrLED, dimmsetNow[nrLED]);
-
-    // }
-    // //wlaczamy na poprzedni poziom
-    // else
 
     if (dimmsetNow[nrLED] == 0) {
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
@@ -1465,15 +1432,6 @@ void oneClick2() {
     uint8_t nrLED = 2;
 
     if (serialmode == 1) Serial.println("oneClick");
-    //pierwszy raz po reset
-    /* if (dimmsetNow[nrLED] == 0 && dimmsetLast[nrLED] == 0) {
-        dimmsetNow[nrLED] = dimmsetMax[nrLED];
-        dimmsetLast[nrLED] = dimmsetNow[nrLED];
-        // jasnosc = dimmsetNow[nrLED];
-        jasnoscLED(nrLED, dimmsetNow[nrLED]);
-    }
-    //wlaczamy na poprzedni poziom
-    else */
 
     if (dimmsetNow[nrLED] == 0) {
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
@@ -2183,10 +2141,7 @@ void OdczytTemperatury() {
 
     if (OneWire::crc8(DallasAddr, 7) == DallasAddr[7]) {
         byte cfg = (data[4] & 0x60);
-        // if (serialmode == 1) {
-        //     Serial.print("cfg: ");
-        //     Serial.print(cfg);
-        // }
+        
         if (cfg == 0x00) {
             raw = raw & ~7;  // 9 bit resolution, 93.75 ms
         } else if (cfg == 0x20) {
