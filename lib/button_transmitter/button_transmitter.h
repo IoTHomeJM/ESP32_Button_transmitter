@@ -80,7 +80,6 @@ void relays(uint8_t n);
 String getsmstel();
 bool sendSMS(String number, String text);
 void wificlose();
-void relaydimonoff();
 void wifiSTAstart();
 void wifiSTAcheck();
 void writeStringToEEPROM(int adres, const String& ToWrite);
@@ -100,7 +99,7 @@ class Qtimers {
     Qtimers(int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0);  // konstruktor
     ~Qtimers();                                                                                         // destruktor
 
-    void tdcomp(void);  //
+    void tdcomp(void);
     void set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, int ms, int de, int me);
 };
 class Dimlevel {
@@ -119,4 +118,19 @@ class Dimlevel {
     void stop();
     void change();
 };
+class Delayrelay {
+   private:
+    uint64_t zapczas = 0;
+    bool roff = 1;
+    int nrrelay;
+    uint16_t relayToff;
+    int dim0, dim1, dim2;
+
+   public:
+    Delayrelay(int = 10, int = 0, int = 1, int = 1, int = 1);
+    ~Delayrelay();
+
+    void delaydim();
+};
+
 #endif

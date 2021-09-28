@@ -17,7 +17,6 @@ uint64_t aktualnyCzas = 0;
 uint64_t zapamietanyCzas1 = 0;
 uint64_t zapamietanyCzasEEPROM = 0;
 uint64_t zapamietanyCzasOLED = 0;
-uint64_t zapczas = 0, zapczas2 = 0;  // dla relaydimonoff();
 
 // LightDimmerESP32 DimLED1;
 LightDimmerESP32 led[3];
@@ -44,7 +43,7 @@ char* passwordAP = strdup("1234567890");  // Enter Password here
 char* ssid = strdup("NET");
 char* password = strdup("Janek1@$Eva");
 
-char* ssidF = strdup("JLU");// drugie dane wifi. proba laczenia po 4 razie
+char* ssidF = strdup("JLU");  // drugie dane wifi. proba laczenia po 4 razie
 char* passwordF = strdup("1234567890");
 char* hostname = strdup("1234567890");
 // String hostname = "SW";
@@ -159,7 +158,8 @@ int relay[2] = {25, 26};                       // piny fizyczne
 bool sp[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};  // status przekaznikow sp[0],sp[1] - fizyczne
 uint16_t relayToff1 = 5;                       // czas opoznienia wylaczenia przekaznika1 w sekundach
 uint16_t relayToff2 = 5;
-bool roff = 1;
+Delayrelay delayrelay1(1, relayToff1);
+Delayrelay delayrelay2(2, relayToff2, 0, 1);
 
 int timerWifiSTAcheck = 0, timerWifiSTACon = 0, timerServerON = 0, timerbuttonWIFIdisable = 0, timertimeNetUpdate = 0;
 //adresy eeprom
@@ -179,7 +179,7 @@ void setup() {
         for (int i = 0; i < 64; ++i) {
             eepromBUF[i] = readEEPROM(i);
         }  // read 64 byte eeprom
-        
+
         dimmsetLast[0] = eepromBUF[0] * 256 + eepromBUF[1];
         dimmsetLast[1] = eepromBUF[6] * 256 + eepromBUF[7];
         dimmsetLast[2] = eepromBUF[8] * 256 + eepromBUF[9];
@@ -357,7 +357,6 @@ void setup() {
 
     //<-- CAN-BUS
 
-
     button.attachClick(oneClick0);
     button.attachDoubleClick(DoubleClick0);
     button.attachLongPressStart(LongPressStart0);
@@ -406,7 +405,7 @@ void setup() {
     radio.setPALevel(PALevel);
     radio.setDataRate(RF24_250KBPS);
     radio.setRetries(15, 15);
-    radio.openWritingPipe(RF24_rxAddr + 1);  // !!
+    radio.openWritingPipe(RF24_rxAddr + 1);  // +1 to adres 1 odbiornika. jesli chcemy wyslac od innego to trzeba odpowiednio zwiekszyc adres 2,3 itd
     radio.openReadingPipe(1, RF24_rxAddr);
     radio.startListening();
     if (serialmode == 1) radio.printDetails();  // wyswietlamy info o parametrach NRF
@@ -530,7 +529,8 @@ void loop() {
     }
     if (DevID > 0) readCAN();
     readNRF();
-    relaydimonoff();
+    delayrelay1.delaydim();
+    delayrelay2.delaydim();
     dl0.change();  //dim level
     dl1.change();
     dl2.change();
@@ -574,7 +574,6 @@ void readNRF() {
                 break;
             case 3:
                 dimmsetNow[0] = NRFbuf[2] * 256 + NRFbuf[1];
-                dim1 = 1;
                 jasnoscLED(0, dimmsetNow[0]);
                 if (serialmode == 1) {
                     Serial.print("Jasnosc odebrana z nadajnika:");
@@ -583,7 +582,6 @@ void readNRF() {
                 break;
             case 4:
                 dimmsetNow[1] = NRFbuf[2] * 256 + NRFbuf[1];
-                dim2 = 1;
                 jasnoscLED(1, dimmsetNow[1]);
                 if (serialmode == 1) {
                     Serial.print("Jasnosc odebrana z nadajnika:");
@@ -592,7 +590,6 @@ void readNRF() {
                 break;
             case 5:
                 dimmsetNow[2] = NRFbuf[2] * 256 + NRFbuf[1];
-                dim3 = 1;
                 jasnoscLED(2, dimmsetNow[2]);
                 if (serialmode == 1) {
                     Serial.print("Jasnosc odebrana z nadajnika:");
@@ -703,7 +700,7 @@ void sendNRF(uint8_t fnID, uint16_t fndata) {
         char msg[3];
         msg[0] = fnID;
         msg[1] = (fndata & 0xFF);
-        msg[2] = (fndata >> 8);  //forma przekazania bajtu starszego oraz młodszego
+        msg[2] = (fndata >> 8); 
         radio.stopListening();
 
         rslt = radio.write(msg, 3);
@@ -778,18 +775,14 @@ void readCAN() {
                 break;
             case 5:  // dimmer 3 // NIE TESTOWANE
                 dimmsetNow[2] = inFrame.data.uint16[0];
-                dim3 = 1;
                 jasnoscLED(2, dimmsetNow[2]);
                 break;
             case 6:  // wszystkie !! NIE TESTOWANE
                 dimmsetNow[0] = inFrame.data.uint16[0];
-                dim1 = 1;
                 jasnoscLED(0, dimmsetNow[0]);
                 dimmsetNow[1] = inFrame.data.uint16[1];
-                dim2 = 1;
                 jasnoscLED(1, dimmsetNow[1]);
                 dimmsetNow[2] = inFrame.data.uint16[2];
-                dim3 = 1;
                 jasnoscLED(2, dimmsetNow[2]);
                 if (serialmode == 1) {
                     Serial.print("Jasnosc1: ");
@@ -2141,7 +2134,7 @@ void OdczytTemperatury() {
 
     if (OneWire::crc8(DallasAddr, 7) == DallasAddr[7]) {
         byte cfg = (data[4] & 0x60);
-        
+
         if (cfg == 0x00) {
             raw = raw & ~7;  // 9 bit resolution, 93.75 ms
         } else if (cfg == 0x20) {
@@ -2295,21 +2288,6 @@ void relays(uint8_t n) {
         uint16_t data = (n << 8) + sp[n - 1];
         sendNRF(6, data);
         sendCAN(255, 6, data, 0);  //toID - 255 dla wszystkich,
-    }
-}
-void relaydimonoff() {
-    if ((dimmsetNow[0] > 0 || dimmsetNow[1] > 0 || dimmsetNow[2] > 0) && sp[0] == 0) {
-        // if (dimmsetNow[0] > 0 && sp[0] == 0) {
-        relays(1);
-        roff = 1;
-    } else if (roff == 1 && dimmsetNow[0] == 0 && dimmsetNow[1] == 0 && dimmsetNow[2] == 0 && sp[0] == 1) {
-        // } else if (roff == 1 && dimmsetNow[nrLED] == 0 && sp[0] == 1) {
-        zapczas = aktualnyCzas;
-        roff = 0;
-    } else if (roff == 0 && (aktualnyCzas - zapczas >= (relayToff1 * 1000))) {
-        //relayToff
-        roff = 1;
-        relays(1);
     }
 }
 
@@ -2495,6 +2473,36 @@ void Dimlevel::change() {
             }
         }
     }
+}
+Delayrelay::Delayrelay(int nrr, int rtoff, int d0, int d1, int d2) {
+    nrrelay = nrr;
+    relayToff = rtoff;
+    if (d0 == 1)
+        dim0 = 0;
+    else
+        dim0 = 1025;
+    if (d1 == 1)
+        dim1 = 0;
+    else
+        dim0 = 1025;
+    if (d2 == 1)
+        dim2 = 0;
+    else
+        dim2 = 1025;
+}
+void Delayrelay::delaydim() {
+    if ((dimmsetNow[0] > dim0 || dimmsetNow[1] > dim1 || dimmsetNow[2] > dim2) && sp[nrrelay - 1] == 0) {
+        relays(nrrelay);
+        roff = 1;
+    } else if (roff == 1 && dimmsetNow[0] == dim0 && dimmsetNow[1] == dim1 && dimmsetNow[2] == dim2 && sp[nrrelay - 1] == 1) {
+        zapczas = aktualnyCzas;
+        roff = 0;
+    } else if (roff == 0 && (aktualnyCzas - zapczas >= (relayToff * 1000))) {
+        roff = 1;
+        relays(nrrelay);  //relayToff
+    }
+}
+Delayrelay::~Delayrelay() {
 }
 // wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
