@@ -2398,18 +2398,18 @@ void Dimlevel::change() {
                 zapamietanyCzas1 = aktualnyCzas;
 
                 if (dimming_up) {
-                    if (dimmsetNow[nrLED] < 15) {
+                    if (dimmsetNow[nrLED] < 20) {
                         dimmsetNow[nrLED] += 1;
-                    } else if ((dimmsetNow[nrLED] >= 15) && (dimmsetNow[nrLED] <= 40)) {
-                        dimmsetNow[nrLED] += 5;
+                    } else if ((dimmsetNow[nrLED] >= 20) && (dimmsetNow[nrLED] <= 60)) {
+                        dimmsetNow[nrLED] += 3;
                     } else {
                         dimmsetNow[nrLED] += DimUpDownResolution;
                     }
                 } else {
-                    if (dimmsetNow[nrLED] < 15) {
+                    if (dimmsetNow[nrLED] < 20) {
                         dimmsetNow[nrLED] -= 1;
-                    } else if ((dimmsetNow[nrLED] >= 15) && (dimmsetNow[nrLED] <= 40)) {
-                        dimmsetNow[nrLED] -= 5;
+                    } else if ((dimmsetNow[nrLED] >= 20) && (dimmsetNow[nrLED] <= 60)) {
+                        dimmsetNow[nrLED] -= 3;
                     } else {
                         dimmsetNow[nrLED] -= DimUpDownResolution;
                     }
@@ -2456,7 +2456,7 @@ void Delayrelay::delaydim() {
     if ((dimmsetNow[0] > dim0 || dimmsetNow[1] > dim1 || dimmsetNow[2] > dim2) && sp[nrrelay - 1] == 0) {
         relays(nrrelay);
         roff = 1;
-    } else if (roff == 1 && dimmsetNow[0] == 0 && dimmsetNow[1] == 0 && dimmsetNow[2] == 0 && sp[nrrelay - 1] == 1) {
+    } else if (roff == 1 && dimmsetNow[0] <= dim0 && dimmsetNow[1] <= dim1 && dimmsetNow[2] <= dim2 && sp[nrrelay - 1] == 1) {
         zapczas = aktualnyCzas;
         roff = 0;
     } else if (roff == 0 && (aktualnyCzas - zapczas >= (relayToff * 1000))) {
