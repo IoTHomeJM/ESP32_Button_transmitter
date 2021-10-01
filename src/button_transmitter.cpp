@@ -30,8 +30,6 @@ uint8_t numDIM = 0;
 int dimmsetLast[4] = {0};
 int dimmsetLastNL[4] = {7, 7, 7, 7};  // for night light function in Qtimers class
 int dimmsetMax[4] = {999, 999, 999, 999};
-int16_t dimmset_now = 0, dimmset_now2 = 0, dimmset_now3 = 0;
-
 int16_t dimmset_min = 2;
 
 //<--Dimmer
@@ -45,7 +43,7 @@ char* password = strdup("Janek1@$Eva");
 
 char* ssidF = strdup("JLU");  // drugie dane wifi. proba laczenia po 4 razie
 char* passwordF = strdup("1234567890");
-char* hostname = strdup("1234567890");
+char* hostname = strdup("0000000000");
 // String hostname = "SW";
 char* nameDev = strdup("nD");
 WebServer server(80);
@@ -115,14 +113,12 @@ const uint8_t Msg816[16] PROGMEM =  //message
     {
         0x1F, 0xF8, 0x10, 0x08, 0x18, 0x18, 0x14, 0x28, 0x13, 0xC8, 0x10, 0x08, 0x10, 0x08, 0x1F, 0xF8};
 
-// OneButton button(SW1pin, true, 1);
 OneButton button(SW1pin, true);   //SW1pin
 OneButton button1(SW2pin, true);  //SW2pin
 OneButton button2(SW3pin, true);
 OneButton button3(SW4pin, true);
 Dimlevel dl0(0), dl1(1), dl2(2);
-// bool button_is_long_pressed = 0;
-// bool dimming_up = 0;
+
 bool poRestarcieTestSW1 = 1;
 uint8_t bWIFIenable = 0;
 char timestr[10] = "--:--:--";
@@ -149,7 +145,7 @@ int serialmode = 2;  //0-wylaczony, 1-wlaczoy LOG, 2-wlaczony SIM
 String SMSbuf = "";  // bufor SMS
 char incomingByte;   // zaciaganie bitow z seriala
 bool gsminit = 0, GSMmsg = 0;
-uint16_t smsoled = 5000;  // czas wyswietlania sms na OLED
+uint16_t smsoled = 5000;  // czas wyswietlania sms oraz wifi na OLED
 
 int drvsimreset = 33;
 bool oleddim = 0;
@@ -158,8 +154,8 @@ int relay[2] = {25, 26};                       // piny fizyczne
 bool sp[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};  // status przekaznikow sp[0],sp[1] - fizyczne
 uint16_t relayToff1 = 5;                       // czas opoznienia wylaczenia przekaznika1 w sekundach
 uint16_t relayToff2 = 5;
-Delayrelay delayrelay1(1, relayToff1,0,1,0);
-Delayrelay delayrelay2(2, relayToff2, 1, 0,1);
+Delayrelay delayrelay1(1, relayToff1, 0, 1, 0);
+Delayrelay delayrelay2(2, relayToff2, 1, 0, 1);
 
 int timerWifiSTAcheck = 0, timerWifiSTACon = 0, timerServerON = 0, timerbuttonWIFIdisable = 0, timertimeNetUpdate = 0;
 //adresy eeprom
@@ -229,7 +225,7 @@ void setup() {
     pinMode(relay[1], OUTPUT);
     digitalWrite(relay[0], sp[0]);
     digitalWrite(relay[1], sp[1]);
-    // serialmode = 1;  // !!
+
     if (serialmode == 1) {
         Serial.begin(115200);      // dla serial monitro
     } else if (serialmode == 2) {  //dla SIM
@@ -323,17 +319,13 @@ void setup() {
     led[2].begin(2, HIGH);
 
     if (LightOnBoot == 1) {  //max jasnosc podczas startu procesora
-        //led[0].setupMax(jasnosc);
-        dimmsetNow[0] = jasnosc;  // poprwka przekazanie jasnosci on boot z eeprom tez na wyswietlacz
-        dim1 = 1;
-        jasnoscLED();
+        dimmsetNow[0] = dimmsetLast[0]; 
+        jasnoscLED(0, dimmsetNow[0]);
     }
 
     if (serialmode == 1) {
         Serial.print("Nastawy po wlaczeniu: Jasnosc:");
-        Serial.print(jasnosc);
-        Serial.print(" Jasnosc max:");
-        Serial.println(jasnosc_max);
+        Serial.println(dimmsetLast[0]);        
     }
     //<--
     */
@@ -354,7 +346,6 @@ void setup() {
             Serial.println("CAN init failed…");
         }
     }
-
     //<-- CAN-BUS
 
     button.attachClick(oneClick0);
@@ -377,8 +368,8 @@ void setup() {
     button3.attachDoubleClick(DoubleClick0);
     button3.attachLongPressStart(LongPressStart0);
     button3.attachLongPressStop(LongPressStop0);
-    //--> dla oled 0.9 cala // Address 0x3D for 128x64
 
+    //--> dla oled 0.9 cala // Address 0x3D for 128x64
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         if (serialmode == 1) {
             Serial.println(F("SSD1306 allocation failed"));
@@ -392,8 +383,7 @@ void setup() {
     //display.begin(SH1106_SWITCHCAPVCC, 0x3C);
     //<--
 
-    //display.dim(1);// jasnosc wyswietlacza oled jesli 1 to przyciemnione
-
+    display.dim(oleddim);  // jasnosc wyswietlacza oled jesli 1 to przyciemnione
     display.clearDisplay();
     display.display();
     rysujemy_na_lcd();
@@ -417,15 +407,12 @@ void setup() {
             delay(200);
             readSMS();
             if (SMSbuf.indexOf("OK") > -1) {
-                // SMSbuf = "GSM zainicjowany";
-                // rysujemy_na_lcd();
                 cz = 20;
                 gsminit = 1;
             }
             cz++;
         }
         if (gsminit == 1) {
-            //delay(1000);
             Serial.println("AT+CMGF=1");  //Ustaw SMS na tryb tekstowy
             delay(1000);
             rysujemy_na_lcd();
@@ -440,10 +427,7 @@ void setup() {
         }
 
         rysujemy_na_lcd();
-    }  // else {
-    //     SMSbuf = "GSM wylaczony";
-    //     rysujemy_na_lcd();
-    // }
+    }
 
     if (!SPIFFS.begin(true)) {
         Serial.println("SPIFFS init error");
@@ -457,7 +441,7 @@ void setup() {
     timer.setInterval(1000, rysujemy_na_lcd);
     timer.setInterval(2000, InicjacjaOdczytTemperatury);
     timerWifiSTAcheck = timer.setInterval(80000, wifiSTAcheck);  // co 80s
-    timerServerON = timer.setInterval(150, serverON);            //1500
+    timerServerON = timer.setInterval(150, serverON);
     timerWifiSTACon = timer.setInterval(6000, wifiSTAconnecting);
     timertimeNetUpdate = timer.setInterval(43200000, timeNetUpdate);  // co 12h
 
@@ -765,12 +749,10 @@ void readCAN() {
                 break;
             case 3:  // dimmer 1 // NIE TESTOWANE
                 dimmsetNow[0] = inFrame.data.uint16[0];
-                dim1 = 1;
                 jasnoscLED(0, dimmsetNow[0]);
                 break;
             case 4:  // dimmer 2 // NIE TESTOWANE
                 dimmsetNow[1] = inFrame.data.uint16[0];
-                dim2 = 1;
                 jasnoscLED(1, dimmsetNow[1]);
                 break;
             case 5:  // dimmer 3 // NIE TESTOWANE
@@ -918,7 +900,6 @@ void sendCAN(uint8_t toID, uint8_t fnID, uint32_t fndata, uint32_t fndata2) {
 void wificlose() {
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
-    // btStop();  //
 
     timer.disable(timerWifiSTAcheck);
     timer.disable(timerWifiSTACon);
@@ -940,8 +921,6 @@ void wificlose() {
         Serial.print("wifiSTAon: ");
         Serial.println(wifiSTAon);
     }
-    // delay(100);
-    // ESP.restart();
 }
 void wifiapstart() {
     if (serialmode == 1) {
@@ -951,7 +930,6 @@ void wifiapstart() {
     WiFi.persistent(false);
     WiFi.disconnect();
     WiFi.mode(WIFI_OFF);
-    //WiFi.mode(WIFI_STA);
     delay(100);
 
     IPAddress local_ip(192, 168, 1, 100);
@@ -1309,13 +1287,11 @@ void oneClick0() {
 
     if (dimmsetNow[nrLED] == 0) {
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
     //wylaczamy
     else if (dimmsetNow[nrLED] > 0 && dimmsetLast[nrLED] <= dimmsetNow[nrLED]) {
         dimmsetNow[nrLED] = 0;
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
 }
@@ -1333,19 +1309,16 @@ void DoubleClick0() {
     if (dimmsetNow[nrLED] > 0 && dimmsetLast[0] < (dimmsetMax[nrLED] + 1) && dimmsetNow[nrLED] < (dimmsetMax[nrLED] + 1)) {
         dimmsetLast[nrLED] = dimmsetNow[nrLED];
         dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
     //wlaczamy na poprzedni poziom
     else if (dimmsetNow[nrLED] == (dimmsetMax[nrLED] + 1) && dimmsetLast[nrLED] != (dimmsetMax[nrLED] + 1)) {
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
     //na MAX z wylaczonego
     else if (dimmsetNow[nrLED] == 0) {
         dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
 }
@@ -1374,14 +1347,12 @@ void oneClick1() {
 
     if (dimmsetNow[nrLED] == 0) {
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
 
     }
     //wylaczamy
     else if (dimmsetNow[nrLED] > 0 && dimmsetLast[nrLED] <= dimmsetNow[nrLED]) {
         dimmsetNow[nrLED] = 0;
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
 }
@@ -1392,21 +1363,18 @@ void DoubleClick1() {
     if (dimmsetNow[nrLED] > 0 && dimmsetLast[0] < (dimmsetMax[nrLED] + 1) && dimmsetNow[nrLED] < (dimmsetMax[nrLED] + 1)) {
         dimmsetLast[nrLED] = dimmsetNow[nrLED];
         dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
 
     }
     //wlaczamy na poprzedni poziom
     else if (dimmsetNow[nrLED] == (dimmsetMax[nrLED] + 1) && dimmsetLast[nrLED] != (dimmsetMax[nrLED] + 1)) {
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
 
     }
     //na MAX z wylaczonego
     else if (dimmsetNow[nrLED] == 0) {
         dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
 }
@@ -1432,7 +1400,6 @@ void oneClick2() {
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     } else if (dimmsetNow[nrLED] > 0 && dimmsetLast[nrLED] <= dimmsetNow[nrLED]) {  //wylaczamy
         dimmsetNow[nrLED] = 0;
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
 }
@@ -1444,19 +1411,16 @@ void DoubleClick2() {
     if (dimmsetNow[nrLED] > 0 && dimmsetLast[0] < (dimmsetMax[nrLED] + 1) && dimmsetNow[nrLED] < (dimmsetMax[nrLED] + 1)) {
         dimmsetLast[nrLED] = dimmsetNow[nrLED];
         dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
     //wlaczamy na poprzedni poziom
     else if (dimmsetNow[nrLED] == (dimmsetMax[nrLED] + 1) && dimmsetLast[nrLED] != (dimmsetMax[nrLED] + 1)) {
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
     //na MAX z wylaczonego
     else if (dimmsetNow[nrLED] == 0) {
         dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
-        // jasnosc = dimmsetNow[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
 }
@@ -1609,7 +1573,6 @@ String readStringFromEEPROM(int addrOffset) {
             data[i] = readEEPROM(addrOffset + 1 + i);
         }
         data[newStrLen] = '\0';
-        // data[newStrLen] = "\/ 0";  // !!! NOTE !!! Remove the space between the slash "/" and "0" (I've added a space because otherwise there is a display bug)
     } else {
         if (serialmode == 1) Serial.println("Blad odczytu Stringa z eeprom-za dlugi");
     }
@@ -2108,7 +2071,7 @@ void aktualizuj_timestr() {
     timestr[4] = '0' + Qminutes % 10;
     timestr[6] = '0' + Qsecounds / 10;
     timestr[7] = '0' + Qsecounds % 10;
-    tl1.tdcomp();
+    tl1.tdcomp();  // local time timers
     tl2.tdcomp();
 }
 
@@ -2433,7 +2396,6 @@ void Dimlevel::change() {
     if (DLbutton_is_long_pressed == 1) {
         zapamietanyCzas1 = 0;
         zapamietanyCzas2 = 0;
-        // dimmset_now = dimmsetLast[nrLED];
         if (aktualnyCzas - zapamietanyCzas2 >= 2000UL) {
             if (aktualnyCzas - zapamietanyCzas1 >= 200UL) {
                 zapamietanyCzas1 = aktualnyCzas;
@@ -2512,7 +2474,6 @@ Delayrelay::~Delayrelay() {
 // dokonczyc przetestowac can.
 // napisac funkcje do doladowywania/ wysylania specjalnych sms w celu wlaczenia uslugi np dodatkowe sms.
 // napisac funkcje sprawdzajaca saldo konta jesli jest to prepaid-opcja zaznaczenia na www, wpisania kodu sprawdzajacego saldo
-// napisac synchronizacje czasu przez CAN wysylajace do wszystkich modołów z mastera (255).
 // napisac restart modulu GSM co x czasu
 
 //
