@@ -158,8 +158,8 @@ int relay[2] = {25, 26};                       // piny fizyczne
 bool sp[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};  // status przekaznikow sp[0],sp[1] - fizyczne
 uint16_t relayToff1 = 5;                       // czas opoznienia wylaczenia przekaznika1 w sekundach
 uint16_t relayToff2 = 5;
-Delayrelay delayrelay1(1, relayToff1);
-Delayrelay delayrelay2(2, relayToff2, 0, 1);
+Delayrelay delayrelay1(1, relayToff1,0,1,0);
+Delayrelay delayrelay2(2, relayToff2, 1, 0,1);
 
 int timerWifiSTAcheck = 0, timerWifiSTACon = 0, timerServerON = 0, timerbuttonWIFIdisable = 0, timertimeNetUpdate = 0;
 //adresy eeprom
@@ -456,7 +456,7 @@ void setup() {
     timerbuttonWIFIdisable = timer.setInterval(600000, buttonWIFIdisable);  //za 10 min
     timer.setInterval(1000, rysujemy_na_lcd);
     timer.setInterval(2000, InicjacjaOdczytTemperatury);
-    timerWifiSTAcheck = timer.setInterval(60000, wifiSTAcheck);  // co 5min 300000
+    timerWifiSTAcheck = timer.setInterval(80000, wifiSTAcheck);  // co 80s
     timerServerON = timer.setInterval(150, serverON);            //1500
     timerWifiSTACon = timer.setInterval(6000, wifiSTAconnecting);
     timertimeNetUpdate = timer.setInterval(43200000, timeNetUpdate);  // co 12h
@@ -700,7 +700,7 @@ void sendNRF(uint8_t fnID, uint16_t fndata) {
         char msg[3];
         msg[0] = fnID;
         msg[1] = (fndata & 0xFF);
-        msg[2] = (fndata >> 8); 
+        msg[2] = (fndata >> 8);
         radio.stopListening();
 
         rslt = radio.write(msg, 3);
@@ -2477,29 +2477,32 @@ void Dimlevel::change() {
 Delayrelay::Delayrelay(int nrr, int rtoff, int d0, int d1, int d2) {
     nrrelay = nrr;
     relayToff = rtoff;
-    if (d0 == 1)
+    if (d0 == 1) {
         dim0 = 0;
-    else
-        dim0 = 1025;
-    if (d1 == 1)
+    } else {
+        dim0 = 9999;
+    }
+    if (d1 == 1) {
         dim1 = 0;
-    else
-        dim0 = 1025;
-    if (d2 == 1)
+    } else {
+        dim1 = 9999;
+    }
+    if (d2 == 1) {
         dim2 = 0;
-    else
-        dim2 = 1025;
+    } else {
+        dim2 = 9999;
+    }
 }
 void Delayrelay::delaydim() {
     if ((dimmsetNow[0] > dim0 || dimmsetNow[1] > dim1 || dimmsetNow[2] > dim2) && sp[nrrelay - 1] == 0) {
         relays(nrrelay);
         roff = 1;
-    } else if (roff == 1 && dimmsetNow[0] == dim0 && dimmsetNow[1] == dim1 && dimmsetNow[2] == dim2 && sp[nrrelay - 1] == 1) {
+    } else if (roff == 1 && dimmsetNow[0] == 0 && dimmsetNow[1] == 0 && dimmsetNow[2] == 0 && sp[nrrelay - 1] == 1) {
         zapczas = aktualnyCzas;
         roff = 0;
     } else if (roff == 0 && (aktualnyCzas - zapczas >= (relayToff * 1000))) {
         roff = 1;
-        relays(nrrelay);  //relayToff
+        relays(nrrelay);
     }
 }
 Delayrelay::~Delayrelay() {
