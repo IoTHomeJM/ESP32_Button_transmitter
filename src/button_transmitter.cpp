@@ -1663,9 +1663,6 @@ void SettingWriteEEPROM() {
 
     if (serialmode == 1) Serial.println("... zakonczone. Reset ESP.");
     SettingSave = 0;
-    if (ServerActive == 0) {
-        wificlose();
-    }
     ESP.restart();
 }
 void FactoryWriteEEPROM() {
