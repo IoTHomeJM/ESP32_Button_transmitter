@@ -11990,6 +11990,28 @@
                                 <input class="contact-form__input contact-form__input--radio" id="18" name="allFrame" type="radio" value="0" />
 
                             </div>
+                            <div class="contact-form__input-group" title="send can">
+                                <label class="contact-form__label">Send CAN:</label></br>
+
+                                <table style="width:350px">
+                                    <tr>
+                                        <!-- <th></th> -->
+                                        <th><label class="contact-form__label">toID</label></th>
+                                        <th><label class="contact-form__label">fnID</label></th>
+                                        <th> <label class="contact-form__label">fndata </label></th>
+                                        <th> <label class="contact-form__label">fndata2 </label></th>
+                                    </tr>
+                                    <tr>
+                                        <!-- <td></td> -->
+                                        <td><input class="Qtime contact-form__input contact-form__input--text " id="idtoID" name="toIDsend" type="number" min="0" max="254" value="0" /></td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text" id="idfnID" name="fnIDsend" type="number" min="0" max="254" value="0" /></td>
+                                        <td><input class="Qtime contact-form__input contact-form__input--text" id="idfndata" name="fndatasend" type="number" value="0" /></td>
+                                        <td> <input class="Qtime contact-form__input contact-form__input--text" id="idfndata" name="fndata2send" type="number" value="0" /></td>
+                                    </tr>
+
+                                </table>
+                                <button class="btn btn-info zaokbutton frajaxbtn" type="submit">Wyślij</button>
+                            </div>
                     </div>
                     <div class="col-md-6 col-lg-6">
                         <h3 class="text-center text-uppercase text-white mb-0">NRF:</h2>
@@ -12030,7 +12052,7 @@
                     </div>
                 </div>
                 <div class="row">
-                    <div class="col-md-6 col-lg-6">
+                    <div class="col-md-6 col-lg-6"></br>
                         <h3 class="text-center text-uppercase text-white mb-0">INNE:</h2>
 
                             <div class="contact-form__input-group">
@@ -12314,25 +12336,15 @@
         </div>
     </section>
 
-
-
-
-
     <script type="text/javascript">
         var x = setInterval(function () { TimeZ() }, 1000);
         function TimeZ() {
 
             var Tjson = Math.round(new Date() / 1000);
-            // var Ttime = d.toLocaleTimeString();
-            // var Tdate = d.toLocaleDateString();
-            // var Tjson = d.valueOf();
-            // document.getElementById("time").innerHTML = Ttime;
-            // document.getElementById("date").innerHTML = Tdate;
-            // document.getElementById("43").innerHTML = Tjson;
             $("#43").val(Tjson);
         }
 
-        var frm = $('#contactForm1')
+        var frm = $('#contactForm1');
         var frm2 = $('.frajaxbtn');
         var server = '';
         frm.submit(function (e) {
@@ -12342,7 +12354,7 @@
 
             $.ajax({
                 type: frm.attr('method'),
-                //url: frm.attr('action'),
+                // url: frm.attr('action'),
                 url: server + 'config',
                 data: frm.serialize(),
                 success: function (data) {
@@ -12494,6 +12506,7 @@
                     //$('.user-list').removeClass('loading');        
                 });
         });
+
 
         //dla testow
         const res2 = [

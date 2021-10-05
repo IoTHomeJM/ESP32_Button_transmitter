@@ -890,6 +890,8 @@ void sendCAN(uint8_t toID, uint8_t fnID, uint32_t fndata, uint32_t fndata2) {
         Serial.print(fnID);
         Serial.print(" fndata: ");
         Serial.println(fndata);
+        Serial.print(" fndata2: ");
+        Serial.println(fndata2);
     }
     frameID = 0;
 }
@@ -1078,7 +1080,9 @@ void buttonWIFIdisable() {
 }
 void konfiguracja() {
     FactorySet = server.arg("FactorySet").toInt();
-    if (FactorySet == 0) {
+    if (server.arg("fnIDsend").toInt() > 0) {
+        sendCAN(server.arg("toIDsend").toInt(), server.arg("fnIDsend").toInt(), server.arg("fndatasend").toInt(), server.arg("fndata2send").toInt());
+    } else if (FactorySet == 0) {
         DevID = server.arg("DevID").toInt();
         SubDevID = server.arg("SubDevID").toInt();
         Flag = server.arg("Flag").toInt();
