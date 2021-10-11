@@ -11952,7 +11952,7 @@
     <!-- konfiguracja ESP32 -->
     <section class="bg-primary text-white mb-0" id="confesp32">
         <div class="container">
-            <h2 class="text-center text-uppercase text-secondary mb-0">Konfiguracja Przycisku</h2>
+            <h2 class="text-center text-uppercase text-secondary mb-0">Konfiguracja Przycisku (1.0)</h2>
 
 
             <p class="m-5 "></p>
@@ -12146,6 +12146,16 @@
                                     <input class="contact-form__input contact-form__input--text" id="44" name="nameDev" type="text" value="" />
                                 </span>
                             </div>
+                            <div class="contact-form__input-group">
+                                <label class="contact-form__label">Auto firmware update: </label>
+                                </br><span class="p-4">
+                                    <label class="contact-form__label contact-form__label--radio" for="68">TAK</label>
+                                    <input class="contact-form__input contact-form__input--radio" id="68" name="timerCU" type="radio" value="1" />
+                                </span>
+                                <label class="contact-form__label contact-form__label--radio" for="69">NIE</label>
+                                <input class="contact-form__input contact-form__input--radio" id="69" name="timerCU" type="radio" value="0" />
+                            </div>
+
                     </div>
                     <div class="col-md-6 col-lg-6">
                         <h3 class="text-center text-uppercase text-white mb-0">ŚWIATŁO</h2>
@@ -12485,6 +12495,11 @@
                         $("#66").prop("checked", true);
                     } else {
                         $("#67").prop("checked", true)
+                    }
+                    if (JSON.stringify(res[2].timerCU) == "1") {
+                        $("#68").prop("checked", true);
+                    } else {
+                        $("#69").prop("checked", true)
                     }
 
 

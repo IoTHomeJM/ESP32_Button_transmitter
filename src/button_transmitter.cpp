@@ -1,9 +1,15 @@
 #include "button_transmitter.h"
 
+String FirmwareVer = {"1.0"}, FirmwareVerNEW = {"0.0"};
+#define URL_fw_Version "https://raw.githubusercontent.com/IoTHomeJM/ESP32_Button_transmitter/master/firmware/bin_version.txt"
+#define URL_fw_Bin "https://raw.githubusercontent.com/IoTHomeJM/ESP32_Button_transmitter/master/firmware/firmware.bin"
+#define URL_spiffs_Bin "https://raw.githubusercontent.com/IoTHomeJM/ESP32_Button_transmitter/master/firmware/spiffs.bin"
+bool QtFWCheck = 0;
+int updatefw = 0;
 int zaok = 5;          // zaokraglenia suwaka jasnosci na oled
 int dimActivNumb = 0;  //dla rysowania jasnosci na oled.
 bool checkOne1 = 1;
-
+int upfwcur = 0, upfwtotal = 1000;
 unsigned int czasnazapisweeprom = 6000;  //w milisekundach, 6 sekund, w przypadku brak zmiany jasnosci przez ten czas powoduje zapis w eeprom
 
 //const byte portLED = 19, portLED2 = 18, portLED3 = 17;  // dostepne: DIM1/R - 19 | DIM2/G - 18 | DIM3/B - 17
@@ -51,7 +57,7 @@ bool wifiSTAon = 0, wifiAPon = 1, buttonWIFIactived = 0, wifiAPconnected = 0, wi
 uint8_t wifiSTAonCN = 0;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 0, 60000);  // ntp
-int8_t timer1on = 0, timer2on = 0;
+int8_t timer1on = 0, timer2on = 0, timerCU = 0;
 int TimerS1[4] = {0, 0, 0, 0};  // FOR Qtimer hour, minutes ,day ,month
 int TimerE1[4] = {0, 0, 0, 0};
 int TimerS2[4] = {0, 0, 0, 0};  // FOR Qtimer hour, minutes ,day ,month
@@ -59,7 +65,7 @@ int TimerE2[4] = {0, 0, 0, 0};
 //<--server
 
 //--> CAN-BUS
-
+CAN_FRAME inFrame;
 uint8_t Flag = 0;      // 1 bit
 uint8_t SubDevID = 0;  // 4 bity od 0 do 15. wykorzystywane np po to, aby zarzadzac drugim modulem po CAN z tym zamym DevID. Gdy nadajnik i dimmer sa  polaczone z CAN-BUS dajemy w dimmer 1-15
 uint8_t DevID = 2;     // 8bit ID tego urzadzenia, ID 1 to master.
@@ -125,7 +131,7 @@ char timestr[10] = "--:--:--";
 char* Timestamp = strdup("575420400");
 
 int Qhour, Qminutes, Qsecounds, Qday, Qmonth;
-Qtimers tl1, tl2;
+Qtimers tl1, tl2, checkUpdate;
 
 boolean SW1TouchEnable = 0;  // aktywacja funkcji przycisku dotyku
 boolean SW1TouchActive = 0;  // dotyk uruchamia sie dopiero po inicjalizacji
@@ -162,7 +168,6 @@ int timerWifiSTAcheck = 0, timerWifiSTACon = 0, timerServerON = 0, timerbuttonWI
 int FactorySetE = 37;
 int nameDevE = 2200;
 
-// active, function, hour, minutes, day, montch
 void setup() {
     //--> EEPROM
     Wire.begin(21, 22);  // sda, scl
@@ -216,8 +221,9 @@ void setup() {
         dimmsetLastNL[0] = eepromBUF[54] * 256 + eepromBUF[55];
         dimmsetLastNL[1] = eepromBUF[56] * 256 + eepromBUF[57];
         dimmsetLastNL[2] = eepromBUF[58] * 256 + eepromBUF[59];
-        timer2on = eepromBUF[61];
         timer1on = eepromBUF[60];
+        timer2on = eepromBUF[61];
+        timerCU = eepromBUF[62];
     }
 
     // konfikuracja poczatkowa przekaznika
@@ -415,18 +421,13 @@ void setup() {
         if (gsminit == 1) {
             Serial.println("AT+CMGF=1");  //Ustaw SMS na tryb tekstowy
             delay(1000);
-            rysujemy_na_lcd();
-            SMSbuf = "";
             Serial.println("AT+CNMI=1,2,0,0,0");  //Procedura obsługi nowo przybyłych wiadomości
             delay(1000);
-
-            rysujemy_na_lcd();
             //Serial.println("AT+CMGL=\"REC UNREAD\"");  // Czytaj Nieprzeczytane wiadomości
         } else {
             SMSbuf = "Nie wykryto GSM";
+            rysujemy_na_lcd();
         }
-
-        rysujemy_na_lcd();
     }
 
     if (!SPIFFS.begin(true)) {
@@ -477,16 +478,10 @@ void setup() {
     }
     setTime(String(Timestamp).toInt() + 7200);  //ustawiamy zegarek
 
-    if (timer1on == 0) {
-        tl1.set(0, 1, TimerS1[0], TimerS1[1], TimerE1[0], TimerE1[1], TimerS1[2], TimerS1[3], TimerE1[2], TimerE1[3]);
-    } else {
-        tl1.set(1, 1, TimerS1[0], TimerS1[1], TimerE1[0], TimerE1[1], TimerS1[2], TimerS1[3], TimerE1[2], TimerE1[3]);
-    }
-    if (timer2on == 0) {
-        tl2.set(0, 1, TimerS1[0], TimerS1[1], TimerE1[0], TimerE1[1], TimerS1[2], TimerS1[3], TimerE1[2], TimerE1[3]);
-    } else {
-        tl2.set(1, 1, TimerS1[0], TimerS1[1], TimerE1[0], TimerE1[1], TimerS1[2], TimerS1[3], TimerE1[2], TimerE1[3]);
-    }
+    tl1.set(timer1on, 1, TimerS1[0], TimerS1[1], TimerE1[0], TimerE1[1], TimerS1[2], TimerS1[3], TimerE1[2], TimerE1[3]);
+    tl2.set(timer2on, 1, TimerS1[0], TimerS1[1], TimerE1[0], TimerE1[1], TimerS1[2], TimerS1[3], TimerE1[2], TimerE1[3]);
+    checkUpdate.set(timerCU, 2, 21, 0, 0, 0, 0, 0, 0, 0);
+
     if (ServerActive == 1) {
         wifiSTAstart();
     } else {
@@ -502,6 +497,8 @@ void loop() {
     timer.run();
     LightDimmerESP32::update();
 
+    firmwareupdate();
+    if (QtFWCheck) updatefw = FirmwareVersionCheck();  // dla Qtimer
     if (SW1TouchActive == 1) {
         sprawdzSW1Touch();
         button.tick(SW1TouchPressed);
@@ -699,8 +696,37 @@ void sendNRF(uint8_t fnID, uint16_t fndata) {
     radio.startListening();
 }
 //--> CAN-BUS
+// String readStringFromCan() {
+//     int newStrLen = inFrame.data.uint8[0];
+//     char data[newStrLen + 1];
+//     if (newStrLen <= 32) {
+//         for (int i = 1; i < newStrLen; i++) {
+//             data[i] = inFrame.data.uint8[i];
+//         }
+//         data[newStrLen] = '\0';
+//     } else {
+//         if (serialmode == 1) Serial.println("Blad odczytu Stringa z eeprom-za dlugi");
+//     }
+//     return String(data);
+// }
+
+// int writeStringToCan(String ToWrite) {
+//     char* TW = strdup("0");
+//     strcpy(TW, ToWrite.c_str());
+//     const String& TW;
+//     byte size = TW.length();
+//     char data[size + 1];
+//     data[0] = size;
+//     if (serialmode == 1) Serial.println(size);
+//     for (int i = 1; i < size; i++) {
+//         data[i] = TW[i];
+//         if (serialmode == 1) Serial.print(TW[i]);
+//     }
+//     //  return int(data);
+//     return data.toInt();
+// }
+
 void readCAN() {
-    CAN_FRAME inFrame;
     if (CAN0.read(inFrame)) {
         frameID = inFrame.id;  // ID ramki CAN
         uint8_t fnID = frameID >> 21;
@@ -776,7 +802,20 @@ void readCAN() {
                 }
 
                 break;
-            case 7:
+            case 7:  // update firmware
+                FirmwareVerNEW = String(inFrame.data.uint32[0]);
+                if (serialmode == 1) Serial.println("FirmwareVerNEW" + FirmwareVerNEW);
+                FirmwareVerNEW.trim();
+                if (FirmwareVerNEW.equals(FirmwareVer)) {
+                    if (serialmode == 1) Serial.println("Device already on latest firmware version: " + FirmwareVer);
+                    SMSbuf = "No update";
+                    zapamietanyCzasOLED = aktualnyCzas;
+                    rysujemy_na_lcd();
+                } else {
+                    if (wifiSTAon == 0) buttonWIFIenable();  //wlacza wifi i aktualizuje firmware
+                    updatefw = 2;
+                }
+
                 break;
             case 8:
                 break;
@@ -1015,6 +1054,7 @@ void wifiSTAcheck() {
                 zapamietanyCzasOLED = aktualnyCzas;
                 SMSbuf = "IP: " + WiFi.localIP().toString() + "";
                 timeNetUpdate();
+                updatefw = FirmwareVersionCheck();
             }
             timer.disable(timerWifiSTACon);
 
@@ -1142,6 +1182,7 @@ void konfiguracja() {
         TimerE2[3] = server.arg("timerE2month").toInt();
         timer1on = TimerE2[3] = server.arg("timer1on").toInt();
         timer2on = TimerE2[3] = server.arg("timer2on").toInt();
+        timerCU = TimerE2[3] = server.arg("timerCU").toInt();
 
         SettingSave = server.arg("eeprom_save").toInt();
 
@@ -1249,6 +1290,7 @@ void create_json() {
            ",\"dimmsetLastNL2\":" + String(dimmsetLastNL[2]) +
            ",\"timer1on\":" + String(timer1on) +
            ",\"timer2on\":" + String(timer2on) +
+           ",\"timerCU\":" + String(timerCU) +
 
            "}]";
 }
@@ -1277,6 +1319,8 @@ void handleLogin() {
 //<-- server
 
 void oneClick0() {
+    if (updatefw == 1) updatefw = 3;
+
     if (bWIFIenable == 5) {
         buttonWIFIenable();
     } else {
@@ -1328,6 +1372,14 @@ void DoubleClick0() {
 }
 
 void LongPressStart0() {
+    if (updatefw == 1) {
+        sendCAN(255, 7, FirmwareVerNEW.toInt(), 0);
+        updatefw = 2;
+        if (wifiSTAon == 0) buttonWIFIenable();
+        // trzeba sprawdzac wlaczenie wifi
+        rysujemy_na_lcd();
+    }
+
     if (bWIFIenable == 3) {
         bWIFIenable = 5;
     }
@@ -1584,9 +1636,11 @@ String readStringFromEEPROM(int addrOffset) {
 }
 void SettingWriteEEPROM() {
     if (serialmode == 1) Serial.print("Zapisywanie ustawien...");
-    // writeEEPROM(62, TimerS1[2], 1);
+    // writeEEPROM(63, TimerS1[2], 1);
     // delay(6); timer1on
 
+    writeEEPROM(62, timerCU, 1);
+    delay(6);
     writeEEPROM(61, timer2on, 1);
     delay(6);
     writeEEPROM(60, timer1on, 1);
@@ -1671,6 +1725,8 @@ void SettingWriteEEPROM() {
 }
 void FactoryWriteEEPROM() {
     if (serialmode == 1) Serial.print("Ustawienia fabryczne...");
+    writeEEPROM(62, 0, 1);
+    delay(6);
     writeEEPROM(61, 0, 1);
     delay(6);
     writeEEPROM(60, 0, 1);
@@ -1762,276 +1818,306 @@ byte readEEPROM(unsigned int eeaddress) {
 }
 
 void rysuj_jasnosc_na_lcd(uint16_t nrLED) {
-    if (dimActivNumb == 3) {
-        int val = map(dimmsetNow[0], 0, dimmsetMax[0], 0, 37);
-        if (val < 1 && dimmsetNow[0] > 0) {
+    if (updatefw == 2) {
+        int val = map(upfwcur, 0, upfwtotal, 0, 121);
+
+        if (val < 1 && upfwcur > 0) {
             val = 1;
         }
-        display.fillRoundRect(2, 2, 37, 11, zaok, BLACK);
-        display.fillRoundRect(2, 2, val, 11, zaok, WHITE);
-        // napisy na pasku jasnosci
-        if (dimmsetNow[0] == 0) {
-            display.setCursor(5, 4);
-            display.println("O F F");
-        }
-        if (dimmsetNow[0] == 2) {
-            display.setCursor(5, 4);
-            display.println("M I N");
-        }
-        if (dimmsetNow[0] == (dimmsetMax[0] + 1)) {
-            display.setTextColor(BLACK);
-            display.setCursor(10, 4);
-            display.println("FULL");
-            display.setTextColor(WHITE);
-        }
-        if (dimmsetNow[0] == dimmsetMax[0]) {
-            display.setTextColor(BLACK);
-            display.setCursor(5, 4);
-            display.println("M A X");
-            display.setTextColor(WHITE);
-        }
+        display.fillRect(2, 2, 121, 11, BLACK);
+        display.fillRect(2, 2, val, 11, WHITE);
+    } else if (updatefw != 1) {
+        if (dimActivNumb == 3) {
+            int val = map(dimmsetNow[0], 0, dimmsetMax[0], 0, 37);
+            if (val < 1 && dimmsetNow[0] > 0) {
+                val = 1;
+            }
+            display.fillRoundRect(2, 2, 37, 11, zaok, BLACK);
+            display.fillRoundRect(2, 2, val, 11, zaok, WHITE);
+            // napisy na pasku jasnosci
+            if (dimmsetNow[0] == 0) {
+                display.setCursor(5, 4);
+                display.println("O F F");
+            }
+            if (dimmsetNow[0] == 2) {
+                display.setCursor(5, 4);
+                display.println("M I N");
+            }
+            if (dimmsetNow[0] == (dimmsetMax[0] + 1)) {
+                display.setTextColor(BLACK);
+                display.setCursor(10, 4);
+                display.println("FULL");
+                display.setTextColor(WHITE);
+            }
+            if (dimmsetNow[0] == dimmsetMax[0]) {
+                display.setTextColor(BLACK);
+                display.setCursor(5, 4);
+                display.println("M A X");
+                display.setTextColor(WHITE);
+            }
 
-        int val1 = map(dimmsetNow[1], 0, dimmsetMax[1], 0, 37);
-        if (val1 < 1 && dimmsetNow[1] > 0) {
-            val1 = 1;
-        }
-        display.fillRoundRect(45, 2, 37, 11, zaok, BLACK);
-        display.fillRoundRect(45, 2, val1, 11, zaok, WHITE);
-        // napisy na pasku jasnosci
-        if (dimmsetNow[1] == 0) {
-            display.setCursor(50, 4);
-            display.println("O F F");
-        }
-        if (dimmsetNow[1] == 2) {
-            display.setCursor(50, 4);
-            display.println("M I N");
-        }
-        if (dimmsetNow[1] == (dimmsetMax[1] + 1)) {
-            display.setTextColor(BLACK);
-            display.setCursor(55, 4);
-            display.println("FULL");
-            display.setTextColor(WHITE);
-        }
-        if (dimmsetNow[1] == dimmsetMax[1]) {
-            display.setTextColor(BLACK);
-            display.setCursor(50, 4);
-            display.println("M A X");
-            display.setTextColor(WHITE);
-        }
+            int val1 = map(dimmsetNow[1], 0, dimmsetMax[1], 0, 37);
+            if (val1 < 1 && dimmsetNow[1] > 0) {
+                val1 = 1;
+            }
+            display.fillRoundRect(45, 2, 37, 11, zaok, BLACK);
+            display.fillRoundRect(45, 2, val1, 11, zaok, WHITE);
+            // napisy na pasku jasnosci
+            if (dimmsetNow[1] == 0) {
+                display.setCursor(50, 4);
+                display.println("O F F");
+            }
+            if (dimmsetNow[1] == 2) {
+                display.setCursor(50, 4);
+                display.println("M I N");
+            }
+            if (dimmsetNow[1] == (dimmsetMax[1] + 1)) {
+                display.setTextColor(BLACK);
+                display.setCursor(55, 4);
+                display.println("FULL");
+                display.setTextColor(WHITE);
+            }
+            if (dimmsetNow[1] == dimmsetMax[1]) {
+                display.setTextColor(BLACK);
+                display.setCursor(50, 4);
+                display.println("M A X");
+                display.setTextColor(WHITE);
+            }
 
-        int val2 = map(dimmsetNow[2], 0, dimmsetMax[2], 0, 37);
-        if (val2 < 1 && dimmsetNow[2] > 0) {
-            val2 = 1;
-        }
-        display.fillRoundRect(88, 2, 37, 11, zaok, BLACK);
-        display.fillRoundRect(88, 2, val2, 11, zaok, WHITE);
-        // napisy na pasku jasnosci
-        if (dimmsetNow[2] == 0) {
-            display.setCursor(93, 4);
-            display.println("O F F");
-        }
-        if (dimmsetNow[2] == 2) {
-            display.setCursor(93, 4);
-            display.println("M I N");
-        }
-        if (dimmsetNow[2] == (dimmsetMax[1] + 1)) {
-            display.setTextColor(BLACK);
-            display.setCursor(98, 4);
-            display.println("FULL");
-            display.setTextColor(WHITE);
-        }
-        if (dimmsetNow[2] == dimmsetMax[1]) {
-            display.setTextColor(BLACK);
-            display.setCursor(93, 4);
-            display.println("M A X");
-            display.setTextColor(WHITE);
-        }
-    } else if (dimActivNumb == 1) {
-        int val = map(dimmsetNow[nrLED], 0, dimmsetMax[nrLED], 0, 95);
-        if (val < 1 && dimmsetNow[nrLED] > 0) {
-            val = 1;
-        }
-        display.fillRect(16, 2, 95, 11, BLACK);
-        display.fillRect(16, 2, val, 11, WHITE);
+            int val2 = map(dimmsetNow[2], 0, dimmsetMax[2], 0, 37);
+            if (val2 < 1 && dimmsetNow[2] > 0) {
+                val2 = 1;
+            }
+            display.fillRoundRect(88, 2, 37, 11, zaok, BLACK);
+            display.fillRoundRect(88, 2, val2, 11, zaok, WHITE);
+            // napisy na pasku jasnosci
+            if (dimmsetNow[2] == 0) {
+                display.setCursor(93, 4);
+                display.println("O F F");
+            }
+            if (dimmsetNow[2] == 2) {
+                display.setCursor(93, 4);
+                display.println("M I N");
+            }
+            if (dimmsetNow[2] == (dimmsetMax[1] + 1)) {
+                display.setTextColor(BLACK);
+                display.setCursor(98, 4);
+                display.println("FULL");
+                display.setTextColor(WHITE);
+            }
+            if (dimmsetNow[2] == dimmsetMax[1]) {
+                display.setTextColor(BLACK);
+                display.setCursor(93, 4);
+                display.println("M A X");
+                display.setTextColor(WHITE);
+            }
+        } else if (dimActivNumb == 1) {
+            int val = map(dimmsetNow[nrLED], 0, dimmsetMax[nrLED], 0, 95);
+            if (val < 1 && dimmsetNow[nrLED] > 0) {
+                val = 1;
+            }
+            display.fillRect(16, 2, 95, 11, BLACK);
+            display.fillRect(16, 2, val, 11, WHITE);
 
-        // napisy na pasku jasnosci
-        if (dimmsetNow[nrLED] == 0) {
-            display.setCursor(52, 4);
-            display.println("O F F");
-        }
-        if (dimmsetNow[nrLED] == 2) {
-            display.setCursor(52, 4);
-            display.println("M I N");
-        }
-        if (dimmsetNow[nrLED] == (dimmsetMax[nrLED] + 1)) {
-            display.setTextColor(BLACK);
-            display.setCursor(43, 4);
-            display.println("F U L L");
-            display.setTextColor(WHITE);
-        }
-        if (dimmsetNow[nrLED] == dimmsetMax[nrLED]) {
-            display.setTextColor(BLACK);
-            display.setCursor(50, 4);
-            display.println("M A X");
-            display.setTextColor(WHITE);
-        }
+            // napisy na pasku jasnosci
+            if (dimmsetNow[nrLED] == 0) {
+                display.setCursor(52, 4);
+                display.println("O F F");
+            }
+            if (dimmsetNow[nrLED] == 2) {
+                display.setCursor(52, 4);
+                display.println("M I N");
+            }
+            if (dimmsetNow[nrLED] == (dimmsetMax[nrLED] + 1)) {
+                display.setTextColor(BLACK);
+                display.setCursor(43, 4);
+                display.println("F U L L");
+                display.setTextColor(WHITE);
+            }
+            if (dimmsetNow[nrLED] == dimmsetMax[nrLED]) {
+                display.setTextColor(BLACK);
+                display.setCursor(50, 4);
+                display.println("M A X");
+                display.setTextColor(WHITE);
+            }
 
+            if (poRestarcieTestSW1) {
+                display.setCursor(17, 4);
+                display.println("START:");
+            }  // wyswietlamy tylko przy pierwszym starcie lub restarcie procka
+            if (poRestarcieTestSW1 && dimmsetNow[nrLED] > 0) {
+                poRestarcieTestSW1 = 0;
+            }
+        } else if (dimActivNumb == 2) {
+            int val = map(dimmsetNow[0], 0, dimmsetMax[0], 0, 58);
+            if (val < 1 && dimmsetNow[0] > 0) {
+                val = 1;
+            }
+            display.fillRoundRect(2, 2, 58, 11, zaok, BLACK);
+            display.fillRoundRect(2, 2, val, 11, zaok, WHITE);
+            // napisy na pasku jasnosci
+            if (dimmsetNow[0] == 0) {
+                display.setCursor(5, 4);
+                display.println("O F F");
+            }
+            if (dimmsetNow[0] == 2) {
+                display.setCursor(5, 4);
+                display.println("M I N");
+            }
+            if (dimmsetNow[0] == (dimmsetMax[0] + 1)) {
+                display.setTextColor(BLACK);
+                display.setCursor(10, 4);
+                display.println("FULL");
+                display.setTextColor(WHITE);
+            }
+            if (dimmsetNow[0] == dimmsetMax[0]) {
+                display.setTextColor(BLACK);
+                display.setCursor(5, 4);
+                display.println("M A X");
+                display.setTextColor(WHITE);
+            }
+
+            int val1 = map(dimmsetNow[1], 0, dimmsetMax[1], 0, 58);
+            if (val1 < 1 && dimmsetNow[1] > 0) {
+                val1 = 1;
+            }
+            display.fillRoundRect(66, 2, 58, 11, zaok, BLACK);
+            display.fillRoundRect(66, 2, val1, 11, zaok, WHITE);
+            // napisy na pasku jasnosci
+            if (dimmsetNow[1] == 0) {
+                display.setCursor(71, 4);  //+5
+                display.println("O F F");
+            }
+            if (dimmsetNow[1] == 2) {
+                display.setCursor(71, 4);
+                display.println("M I N");
+            }
+            if (dimmsetNow[1] == (dimmsetMax[1] + 1)) {
+                display.setTextColor(BLACK);
+                display.setCursor(76, 4);
+                display.println("FULL");
+                display.setTextColor(WHITE);
+            }
+            if (dimmsetNow[1] == dimmsetMax[1]) {
+                display.setTextColor(BLACK);
+                display.setCursor(71, 4);
+                display.println("M A X");
+                display.setTextColor(WHITE);
+            }
+        }
         if (poRestarcieTestSW1) {
-            display.setCursor(17, 4);
-            display.println("START:");
+            display.setCursor(5, 4);
+            display.println("|");
         }  // wyswietlamy tylko przy pierwszym starcie lub restarcie procka
         if (poRestarcieTestSW1 && dimmsetNow[nrLED] > 0) {
             poRestarcieTestSW1 = 0;
         }
-    } else if (dimActivNumb == 2) {
-        int val = map(dimmsetNow[0], 0, dimmsetMax[0], 0, 58);
-        if (val < 1 && dimmsetNow[0] > 0) {
-            val = 1;
-        }
-        display.fillRoundRect(2, 2, 58, 11, zaok, BLACK);
-        display.fillRoundRect(2, 2, val, 11, zaok, WHITE);
-        // napisy na pasku jasnosci
-        if (dimmsetNow[0] == 0) {
-            display.setCursor(5, 4);
-            display.println("O F F");
-        }
-        if (dimmsetNow[0] == 2) {
-            display.setCursor(5, 4);
-            display.println("M I N");
-        }
-        if (dimmsetNow[0] == (dimmsetMax[0] + 1)) {
-            display.setTextColor(BLACK);
-            display.setCursor(10, 4);
-            display.println("FULL");
-            display.setTextColor(WHITE);
-        }
-        if (dimmsetNow[0] == dimmsetMax[0]) {
-            display.setTextColor(BLACK);
-            display.setCursor(5, 4);
-            display.println("M A X");
-            display.setTextColor(WHITE);
-        }
-
-        int val1 = map(dimmsetNow[1], 0, dimmsetMax[1], 0, 58);
-        if (val1 < 1 && dimmsetNow[1] > 0) {
-            val1 = 1;
-        }
-        display.fillRoundRect(66, 2, 58, 11, zaok, BLACK);
-        display.fillRoundRect(66, 2, val1, 11, zaok, WHITE);
-        // napisy na pasku jasnosci
-        if (dimmsetNow[1] == 0) {
-            display.setCursor(71, 4);  //+5
-            display.println("O F F");
-        }
-        if (dimmsetNow[1] == 2) {
-            display.setCursor(71, 4);
-            display.println("M I N");
-        }
-        if (dimmsetNow[1] == (dimmsetMax[1] + 1)) {
-            display.setTextColor(BLACK);
-            display.setCursor(76, 4);
-            display.println("FULL");
-            display.setTextColor(WHITE);
-        }
-        if (dimmsetNow[1] == dimmsetMax[1]) {
-            display.setTextColor(BLACK);
-            display.setCursor(71, 4);
-            display.println("M A X");
-            display.setTextColor(WHITE);
-        }
-    }
-    if (poRestarcieTestSW1) {
-        display.setCursor(5, 4);
-        display.println("|");
-    }  // wyswietlamy tylko przy pierwszym starcie lub restarcie procka
-    if (poRestarcieTestSW1 && dimmsetNow[nrLED] > 0) {
-        poRestarcieTestSW1 = 0;
     }
     display.display();
 }
 
 void rysujemy_na_lcd() {
-    if (checkOne1 == 1) {
-        if (dimmsetLast[0] != 0) {
-            dimActivNumb++;
-        }
-        if (dimmsetLast[1] != 0) {
-            dimActivNumb++;
-        }
-        if (dimmsetLast[2] != 0) {
-            dimActivNumb++;
-        }
-        checkOne1 = 0;
-    }
     display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(WHITE);
-    if (dimActivNumb == 3) {
-        display.drawRoundRect(0, 0, 41, 15, zaok, WHITE);
-        display.drawRoundRect(43, 0, 41, 15, zaok, WHITE);
-        display.drawRoundRect(86, 0, 41, 15, zaok, WHITE);
-    } else if (dimActivNumb == 1) {
-        display.drawRoundRect(14, 0, 99, 15, 2, WHITE);
-        display.drawCircle(5, 7, 5, WHITE);
-        display.drawLine(2, 4, 8, 10, WHITE);
-        display.drawLine(2, 10, 8, 4, WHITE);
-        display.fillCircle(122, 7, 5, WHITE);
-        display.drawLine(119, 4, 125, 10, BLACK);
-        display.drawLine(119, 10, 125, 4, BLACK);
-    } else if (dimActivNumb == 2) {
-        display.drawRoundRect(0, 0, 62, 15, zaok, WHITE);
-        display.drawRoundRect(64, 0, 62, 15, zaok, WHITE);
-    }
-    aktualizuj_timestr();
-    display.setCursor(0, 16);
-    display.print(timestr);
-    display.print("   ");
-
-    display.print("R1:");
-    display.print(sp[0]);
-    display.print("|");
-    display.print("R2:");
-    display.print(sp[1]);
-
-    if (SMSbuf != "") {
-        if (aktualnyCzas - zapamietanyCzasOLED >= smsoled) {
-            SMSbuf = "";
-        }
+    if (updatefw == 1) {
+        display.setCursor(0, 0);
+        display.println("Dostepna aktualizacja");
+        display.print(FirmwareVerNEW);
+        display.setCursor(0, 16);
+        display.print("Aktualna wersja " + FirmwareVer);
         display.setCursor(0, 24);
-        display.print(getsmstel());
-        display.setCursor(0, 32);
+        display.println("Zaktualizowac?");
+        display.println();
+        display.println("TAK-przytrzymaj BTN1");
+        display.println("NIE-przycisnij  BTN1");
+
+    } else if (updatefw == 2) {
+        display.drawRoundRect(0, 0, 125, 15, 2, WHITE);
+        display.setCursor(0, 24);
         display.print(SMSbuf);
 
+        display.setCursor(0, 40);
+        display.print("Curent: " + FirmwareVer + " New: " + FirmwareVerNEW);
     } else {
-        display.setCursor(0, 24);
-        display.print("CAN ID:0x");
-        display.println(frameID, HEX);  // CAN-BUS ID
-
-        display.setCursor(0, 32);
-        display.print("NRF:");
-        display.print(NRFbuf[0]);
-        display.print(",");
-        display.println(NRFbuf[2] * 256 + NRFbuf[1]);
-        display.setCursor(50, 32);
-        // display.print("PA:");
-        // display.println(radio.getPALevel());
-        display.println(nameDev);
-
-        display.setFont(&FreeSansBold18pt7b);
-        //    display.setFont(&FreeSans12pt7b);
-
-        // dwie wersje wyswietlania temperatury, druga z miejscem dziesietnym
-
-        display.setCursor(20, 62);
-        char odczyt[4];
-        dtostrf(celsius, 3, 0, odczyt);
-        display.drawCircle(75, 39, 3, WHITE);
-        if (celsius == -99) {
-            display.print("  --");
-        } else {
-            display.print(odczyt);
+        if (checkOne1 == 1) {
+            if (dimmsetLast[0] != 0) {
+                dimActivNumb++;
+            }
+            if (dimmsetLast[1] != 0) {
+                dimActivNumb++;
+            }
+            if (dimmsetLast[2] != 0) {
+                dimActivNumb++;
+            }
+            checkOne1 = 0;
         }
-        /*
+        // display.clearDisplay();
+        display.setTextSize(1);
+        display.setTextColor(WHITE);
+        if (dimActivNumb == 3) {
+            display.drawRoundRect(0, 0, 41, 15, zaok, WHITE);
+            display.drawRoundRect(43, 0, 41, 15, zaok, WHITE);
+            display.drawRoundRect(86, 0, 41, 15, zaok, WHITE);
+        } else if (dimActivNumb == 1) {
+            display.drawRoundRect(14, 0, 99, 15, 2, WHITE);
+            display.drawCircle(5, 7, 5, WHITE);
+            display.drawLine(2, 4, 8, 10, WHITE);
+            display.drawLine(2, 10, 8, 4, WHITE);
+            display.fillCircle(122, 7, 5, WHITE);
+            display.drawLine(119, 4, 125, 10, BLACK);
+            display.drawLine(119, 10, 125, 4, BLACK);
+        } else if (dimActivNumb == 2) {
+            display.drawRoundRect(0, 0, 62, 15, zaok, WHITE);
+            display.drawRoundRect(64, 0, 62, 15, zaok, WHITE);
+        }
+        aktualizuj_timestr();
+        display.setCursor(0, 16);
+        display.print(timestr);
+        display.print(" " + FirmwareVer);
+        display.print(" R1");
+        display.print(sp[0]);
+        display.print("|");
+        display.print("R2");
+        display.print(sp[1]);
+
+        if (SMSbuf != "") {
+            if (aktualnyCzas - zapamietanyCzasOLED >= smsoled) {
+                SMSbuf = "";
+            }
+            display.setCursor(0, 24);
+            display.print(getsmstel());
+            display.setCursor(0, 32);
+            display.print(SMSbuf);
+
+        } else {
+            display.setCursor(0, 24);
+            display.print("CAN ID:0x");
+            display.println(frameID, HEX);  // CAN-BUS ID
+
+            display.setCursor(0, 32);
+            display.print("NRF:");
+            display.print(NRFbuf[0]);
+            display.print(",");
+            display.println(NRFbuf[2] * 256 + NRFbuf[1]);
+            display.setCursor(50, 32);
+            // display.print("PA:");
+            // display.println(radio.getPALevel());
+            display.println(nameDev);
+
+            display.setFont(&FreeSansBold18pt7b);
+            //    display.setFont(&FreeSans12pt7b);
+
+            // dwie wersje wyswietlania temperatury, druga z miejscem dziesietnym
+
+            display.setCursor(20, 62);
+            char odczyt[4];
+            dtostrf(celsius, 3, 0, odczyt);
+            display.drawCircle(75, 39, 3, WHITE);
+            if (celsius == -99) {
+                display.print("  --");
+            } else {
+                display.print(odczyt);
+            }
+            /*
         display.setCursor(20, 60);
         char odczyt[5];
         dtostrf(celsius, 3, 1, odczyt);
@@ -2039,23 +2125,24 @@ void rysujemy_na_lcd() {
         display.drawCircle(95, 39, 3, WHITE);
         */
 
-        display.setFont(&FreeSans12pt7b);
-        display.print(" C");
-        display.setFont();
-        if (wifiSTAon == 1 || wifiAPconnected == 1) {
-            display.drawXBitmap(0, 50, logo16_wifi_bmp, 16, 16, WHITE);
-        } else if (wifiStartConnecting == 1) {
-            display.fillCircle(7, 63, 2, WHITE);
-        }
-        display.drawBitmap(14, 56, Msg816, 16, 8, WHITE);
-        if (gsminit == 1) {
-            display.drawBitmap(100, 56, Signal816, 16, 8, WHITE);
+            display.setFont(&FreeSans12pt7b);
+            display.print(" C");
+            display.setFont();
+            if (wifiSTAon == 1 || wifiAPconnected == 1) {
+                display.drawXBitmap(0, 50, logo16_wifi_bmp, 16, 16, WHITE);
+            } else if (wifiStartConnecting == 1) {
+                display.fillCircle(7, 63, 2, WHITE);
+            }
+            display.drawBitmap(14, 56, Msg816, 16, 8, WHITE);
+            if (gsminit == 1) {
+                display.drawBitmap(100, 56, Signal816, 16, 8, WHITE);
 
-        } else if (serialmode == 2) {
-            display.drawBitmap(100, 56, Signal816, 9, 8, WHITE);
-            display.fillCircle(106, 62, 2, WHITE);
+            } else if (serialmode == 2) {
+                display.drawBitmap(100, 56, Signal816, 9, 8, WHITE);
+                display.fillCircle(106, 62, 2, WHITE);
+            }
+            PokazSW1NaDisplay(0);
         }
-        PokazSW1NaDisplay(0);
     }
     rysuj_jasnosc_na_lcd(numDIM);  //w tej funkcji na koncu jest display.display()
 }
@@ -2074,6 +2161,7 @@ void aktualizuj_timestr() {
     timestr[7] = '0' + Qsecounds % 10;
     tl1.tdcomp();  // local time timers
     tl2.tdcomp();
+    checkUpdate.tdcomp();
 }
 
 void InicjacjaOdczytTemperatury() {
@@ -2351,7 +2439,9 @@ void Qtimers::tdcomp() {
                     }
 
                     break;
-                case 2:
+                case 2:  // check update
+                    QtFWCheck = 1;
+                    if (wifiSTAon == 0) buttonWIFIenable();
                     break;
                 case 3:
                     break;
@@ -2470,6 +2560,129 @@ void Delayrelay::delaydim() {
 }
 Delayrelay::~Delayrelay() {
 }
+
+void firmwareupdate() {
+    if (updatefw == 2 && wifiSTAon == 1) {
+        WiFiClientSecure client;
+        client.setCACert(rootCACertificate);
+        httpUpdate.onStart(update_started);
+        httpUpdate.onEnd(update_finished);
+        httpUpdate.onProgress(update_progress);
+        httpUpdate.onError(update_error);
+        SMSbuf = "Updateing SPIFFS";
+        t_httpUpdate_return ret = httpUpdate.updateSpiffs(client, URL_spiffs_Bin);
+
+        if (ret == HTTP_UPDATE_OK) {
+            if (serialmode == 1) Serial.println("Update sketch...");
+            SMSbuf = "Updateing main FW";
+
+            ret = httpUpdate.update(client, URL_fw_Bin);
+            switch (ret) {
+                case HTTP_UPDATE_FAILED:
+                    if (serialmode == 1) Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
+                    break;
+
+                case HTTP_UPDATE_NO_UPDATES:
+                    if (serialmode == 1) Serial.println("HTTP_UPDATE_NO_UPDATES");
+                    break;
+
+                case HTTP_UPDATE_OK:
+                    if (serialmode == 1) Serial.println("HTTP_UPDATE_OK");
+                    break;
+            }
+        } else {
+            if (serialmode == 1) Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
+        }
+        updatefw = 0;
+    }
+}
+
+int FirmwareVersionCheck() {
+    if (updatefw == 3) {
+        QtFWCheck = 0;
+        return 1;
+    } else if (updatefw == 0 && wifiSTAon == 1) {
+        QtFWCheck = 0;
+        String payload;
+        int httpCode = 0;
+        String fwurl = "";
+        fwurl += URL_fw_Version;
+        fwurl += "?";
+        fwurl += String(rand());
+        Serial.println(fwurl);
+        WiFiClientSecure* client = new WiFiClientSecure;
+        SMSbuf = "Check update";
+        rysujemy_na_lcd();
+        if (client) {
+            client->setCACert(rootCACertificate);
+
+            // Add a scoping block for HTTPClient https to make sure it is destroyed before WiFiClientSecure *client is
+            HTTPClient https;
+
+            if (https.begin(*client, fwurl)) {  // HTTPS
+                if (serialmode == 1) Serial.print("[HTTPS] GET...\n");
+
+                // start connection and send HTTP header
+                delay(100);
+                httpCode = https.GET();
+                delay(100);
+                if (httpCode == HTTP_CODE_OK)  // if version received
+                {
+                    payload = https.getString();  // save received version
+                    FirmwareVerNEW = payload;
+
+                } else {
+                    if (serialmode == 1) {
+                        Serial.print("error in downloading version file:");
+                        Serial.println(httpCode);
+                    }
+                    SMSbuf = "error in downloading version file";
+                    rysujemy_na_lcd();
+                }
+                https.end();
+            }
+            delete client;
+        }
+
+        if (httpCode == HTTP_CODE_OK) {  // if version received
+            payload.trim();
+            if (payload.equals(FirmwareVer)) {
+                if (serialmode == 1) Serial.println("Device already on latest firmware version: " + FirmwareVer);
+                SMSbuf = "No update";
+                rysujemy_na_lcd();
+
+                return 0;
+            } else {
+                if (serialmode == 1) Serial.println("New firmware detected " + payload);
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+void update_started() {
+    if (serialmode == 1) Serial.println("CALLBACK:  HTTP update process started");
+}
+
+void update_finished() {
+    SMSbuf = "Update finished";
+    rysujemy_na_lcd();
+    if (serialmode == 1) Serial.println("CALLBACK:  HTTP update process finished");
+}
+
+void update_progress(int cur, int total) {
+    upfwcur = cur, upfwtotal = total;
+    // SMSbuf = "UP: " + String(cur) + " " + String(total);
+    rysujemy_na_lcd();
+    if (serialmode == 1) Serial.printf("CALLBACK:  HTTP update process at %d of %d bytes...\n", cur, total);
+}
+
+void update_error(int err) {
+    SMSbuf = "Error: " + String(err);
+    rysujemy_na_lcd();
+    if (serialmode == 1) Serial.printf("CALLBACK:  HTTP update fatal error code %d\n", err);
+}
+
 // wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
 // dokonczyc przetestowac can.
