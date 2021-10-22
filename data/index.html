@@ -12155,12 +12155,27 @@
                                 <label class="contact-form__label contact-form__label--radio" for="69">NIE</label>
                                 <input class="contact-form__input contact-form__input--radio" id="69" name="timerCU" type="radio" value="0" />
                             </div>
+                            <div class="contact-form__input-group">
+                                <label class="contact-form__label">Auto display off: </label>
+                                </br><span class="p-4">
+                                    <label class="contact-form__label contact-form__label--radio" for="70">TAK</label>
+                                    <input class="contact-form__input contact-form__input--radio" id="70" name="displayON" type="radio" value="0" />
+                                </span>
+                                <label class="contact-form__label contact-form__label--radio" for="71">NIE</label>
+                                <input class="contact-form__input contact-form__input--radio" id="71" name="displayON" type="radio" value="1" />
+                            </div>
+                            <div class="contact-form__input-group">
+                                <label class="contact-form__label" for="72">Display delay (secound):</label></br>
+                                <span class="p-4">
+                                    <input class="formint contact-form__input contact-form__input--text" id="72" name="cdispdelay" type="number" min="10" max="255" value="10" />
+                                </span>
+                            </div>
 
                     </div>
                     <div class="col-md-6 col-lg-6">
                         <h3 class="text-center text-uppercase text-white mb-0">ŚWIATŁO</h2>
-                            <div class="contact-form__input-group">
-                                <label class="contact-form__label">NIE AKTYWNE Rozdzielczosc LED (bit)</label></br>
+                            <!-- <div class="contact-form__input-group">
+                                <label class="contact-form__label"> Rozdzielczosc LED (bit)</label></br>
                                 <span class="p-4">
                                     <select class="contact-form__input contact-form__input--select" id="13" name="ResolutionLED">
                                         <option>10</option>
@@ -12170,14 +12185,14 @@
                                 </span>
                             </div>
                             <div class="contact-form__input-group">
-                                <label class="contact-form__label">NIE AKTYWNE Czestotliwosc LED (Hz)</label></br>
+                                <label class="contact-form__label"> Czestotliwosc LED (Hz)</label></br>
                                 <span class="p-4">
 
                                     <input class="formint contact-form__input contact-form__input--text" id="12" name="FreqLED" type="number" value="25000" />
 
 
                                 </span>
-                            </div>
+                            </div> -->
                             <div class="contact-form__input-group">
                                 <label class="contact-form__label" for="11">Czas na zapamietanie nowej jasnosci (mili sekund):</label></br>
                                 <span class="p-4">
@@ -12233,8 +12248,8 @@
                             </div>
 
 
-                            <div class="contact-form__input-group ">
-                                <label class="contact-form__label">NIE AKTYWNE tylko w dimer LightOnBoot(Dim1):</label> </br>
+                            <!-- <div class="contact-form__input-group ">
+                                <label class="contact-form__label">LightOnBoot(Dim1):</label> </br>
                                 <span class="p-4">
                                     <label class="contact-form__label contact-form__label--radio " for="1">TAK</label>
                                     <input class="contact-form__input contact-form__input--radio" id="1" name="LightOnBoot" type="radio" value="1" />
@@ -12243,7 +12258,8 @@
                                 <label class="contact-form__label contact-form__label--radio" for="2">NIE</label>
                                 <input class="contact-form__input contact-form__input--radio" id="2" name="LightOnBoot" type="radio" value="0" />
 
-                            </div></br>
+                            </div> -->
+                            </br>
                             <div class="contact-form__input-group" title="Timer jeden">
                                 <label class="contact-form__label">Timer 1 (Night Light):</label></br>
                                 <span class="p-4">
@@ -12413,25 +12429,25 @@
                     if (JSON.stringify(res[0].SW1TouchEnable) == "1") {
                         $("#5").prop("checked", true);
                     } else {
-                        $("#6").prop("checked", true)
+                        $("#6").prop("checked", true);
                     }
 
                     if (JSON.stringify(res[0].OTAActive) == "1") {
                         $("#7").prop("checked", true);
                     } else {
-                        $("#8").prop("checked", true)
+                        $("#8").prop("checked", true);
                     }
                     if (JSON.stringify(res[0].serialmode) == "0") {
                         $("#24").prop("checked", true);
                     } else if (JSON.stringify(res[0].serialmode) == "1") {
-                        $("#25").prop("checked", true)
+                        $("#25").prop("checked", true);
                     } else if (JSON.stringify(res[0].serialmode) == "2") {
-                        $("#35").prop("checked", true)
+                        $("#35").prop("checked", true);
                     }
                     if (JSON.stringify(res[0].ServerActive) == "1") {
                         $("#3").prop("checked", true);
                     } else {
-                        $("#4").prop("checked", true)
+                        $("#4").prop("checked", true);
                     }
 
                     $("#13").val(JSON.stringify(res[0].ResolutionLED));
@@ -12441,7 +12457,7 @@
                     if (JSON.stringify(res[0].LightOnBoot) == "1") {
                         $("#1").prop("checked", true);
                     } else {
-                        $("#2").prop("checked", true)
+                        $("#2").prop("checked", true);
                     }
                     $("#28").val(JSON.stringify(res[0].jasnosc1));
                     $("#30").val(JSON.stringify(res[0].jasnosc2));
@@ -12459,7 +12475,7 @@
                     if (JSON.stringify(res[0].wifiAPon) == "1") {
                         $("#42").prop("checked", true);
                     } else {
-                        $("#41").prop("checked", true)
+                        $("#41").prop("checked", true);
                     }
                     $("#44").val(JSON.stringify(res[0].nameDev).replaceAll("\"", ""));
                     $("#45").val(JSON.stringify(res[2].timerS1h));
@@ -12489,19 +12505,26 @@
                     if (JSON.stringify(res[2].timer1on) == "1") {
                         $("#64").prop("checked", true);
                     } else {
-                        $("#65").prop("checked", true)
+                        $("#65").prop("checked", true);
                     }
                     if (JSON.stringify(res[2].timer2on) == "1") {
                         $("#66").prop("checked", true);
                     } else {
-                        $("#67").prop("checked", true)
+                        $("#67").prop("checked", true);
                     }
                     if (JSON.stringify(res[2].timerCU) == "1") {
                         $("#68").prop("checked", true);
                     } else {
-                        $("#69").prop("checked", true)
+                        $("#69").prop("checked", true);
                     }
 
+                    if (JSON.stringify(res[0].displayON) == "1") {
+                        $("#71").prop("checked", true);
+                    } else {
+                        $("#70").prop("checked", true);
+                    }
+
+                    $("#72").val(JSON.stringify(res[0].cdispdelay));
 
 
 
@@ -12523,41 +12546,7 @@
         });
 
 
-        //dla testow
-        const res2 = [
-            {
-                "DevID": 2,
-                "SubDevID": 0,
-                "Flag": 0,
-                "allFrame": 1,
-                "PALevel": 0,
-                "NRFchannel": 1,
-                "SW1TouchEnable": 0,
-                "OTAActive": 0,
-                "ServerActive": 1,
-                "ResolutionLED": 10,
-                "FreqLED": 25000,
-                "czasnazapisweeprom": 6000,
-                "LightOnBoot": 0,
-                "serialmode": 1,
-                "jasnosc1": 200,
-                "jasnosc2": 80,
-                "jasnosc3": 90,
-                "dimmset_max": 293,
-                "dimm2set_max": 300,
-                "dimm3set_max": 300,
-                "DimUpDownResolution": 20,
-                "RF24_rxAddr": 2,
-                "relayToff1": 5,
-                "relayToff2": 0,
-                "SSID": "JLU",
-                "pass": "1234567890"
-            },
-            {
-                "frameID": 0,
-                "celsius": -99
-            }
-        ];
+
         // const SSID = JSON.stringify(res2[0].SSID);
         // const unquotedSSID = SSID.replaceAll("\"", "");
         // $("#39").val(unquotedSSID);

@@ -7,5 +7,6 @@ ESP32CAN CAN0(GPIO_NUM_4, GPIO_NUM_5);
 
 //Select and uncomment the proper module you've got connected via SPI
             //CS, INT
-MCP2517FD CAN1(17, 27);//MCP2517FD CAN1(1, 27);
+MCP2517FD CAN1(0, 33);
+// MCP2517/FD CAN1(17, 27);//MCP2517FD CAN1(1, 27);
 //MCP2515 CAN1(5, 27);

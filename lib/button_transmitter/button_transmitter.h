@@ -1,6 +1,6 @@
 #ifndef button_transmitter_h
 #define button_transmitter_h
-//#include <Adafruit_SH1106.h>   // oled 1.3 cala
+#include <Adafruit_SH1106.h>   // oled 1.3 cala
 #include <Adafruit_SSD1306.h>  // oled 0.9 cala
 #include <Arduino.h>
 #include <ArduinoOTA.h>
@@ -32,7 +32,7 @@
 
 void EnableOTA();
 void readNRF();
-void sendNRF(uint8_t fnID, uint16_t fndata);
+bool sendNRF(uint8_t fnID, uint16_t fndata);
 void readCAN();
 void sendCAN(uint8_t toID, uint8_t fnID, uint32_t fndata, uint32_t fndata2);
 void wifiapstart();
@@ -112,19 +112,22 @@ class Qtimers {
 };
 class Dimlevel {
    private:
-    uint64_t zapamietanyCzas1 = 0;
+    // uint64_t zapamietanyCzas1 = 0;
     uint64_t zapamietanyCzas2 = 0;
     bool DLbutton_is_long_pressed = 0;
     int nrLED = 0;
     bool dimming_up = 0;
+    uint16_t TMPjasnosc = 0;
 
    public:
     Dimlevel(int = 0);  // konstruktor
     ~Dimlevel();        // destruktor
-
+    void oneClick();
+    void DoubleClick();
     void start();
     void stop();
     void change();
+    void saveeeprom(uint16_t jas);
 };
 class Delayrelay {
    private:
@@ -139,7 +142,12 @@ class Delayrelay {
     ~Delayrelay();
 
     void delaydim();
+    void set(int nrr, int rtoff, int d0, int d1, int d2);
 };
+
+void disableoled();
+void displaydelayon();
+void dimmodulestat();
 
 const char* rootCACertificate =
     "-----BEGIN CERTIFICATE-----\n"
