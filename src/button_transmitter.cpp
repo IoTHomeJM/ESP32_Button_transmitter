@@ -412,7 +412,7 @@ void setup() {
 
     radio.begin();
     radio.setChannel(NRFchannel);
-    radio.setPayloadSize(3);
+    radio.setPayloadSize(7);
     radio.setCRCLength(RF24_CRC_8);
     radio.setPALevel(PALevel);
     radio.setDataRate(RF24_250KBPS);
@@ -575,9 +575,10 @@ void readNRF() {
         switch (readNRFID) {
             case 0:
                 // delay(70);
-                sendNRF(NRFbuf[1] + 3, dimmsetNow[NRFbuf[1]]);
+                // sendNRF(NRFbuf[1] + 3, dimmsetNow[NRFbuf[1]]);
+                sendNRF(7, dimmsetNow[0], dimmsetNow[1], dimmsetNow[2]);
                 break;
-            case 1:
+            case 1:  // check dim module status
                 dmstat = 3;
                 break;
             case 2:
@@ -704,21 +705,27 @@ void readNRF() {
     }  // end if radio.available()
 }
 
-bool sendNRF(uint8_t fnID, uint16_t fndata) {
-    bool rslt = 0;
-    char msg[3];
-    msg[0] = fnID;
-    msg[1] = (fndata & 0xFF);
-    msg[2] = (fndata >> 8);
+bool sendNRF(uint8_t fnID, uint16_t fndata1, uint16_t fndata2, uint16_t fndata3) {
     radio.stopListening();
-    rslt = radio.write(msg, 3);
+    bool rslt = 0;
+    uint8_t sizebuf = 7;
+    char msg[sizebuf];
+    msg[0] = fnID;
+    msg[1] = (fndata1 & 0xFF);
+    msg[2] = (fndata1 >> 8);
+    msg[3] = (fndata2 & 0xFF);
+    msg[4] = (fndata2 >> 8);
+    msg[5] = (fndata3 & 0xFF);
+    msg[6] = (fndata3 >> 8);
+
+    rslt = radio.write(msg, sizebuf);
     radio.startListening();
     if (serialmode == 1) {
-        // if (rslt) {
+        if (rslt) {
         Serial.println("Dane NRF wyslane");
-        // } else {
-        //     Serial.println("Tx failed");
-        // }
+        } else {
+            Serial.println("Tx failed");
+        }
     }
     return rslt;
 }
@@ -1108,7 +1115,7 @@ void wifiSTAcheck() {
     }
 }
 void buttonWIFIenable() {
-    sendNRF(1,0);
+    sendNRF(1, 0,0,0);
     zapiszweeprom = 0;
     bWIFIenable = 0;
     if (wifiSTAon == 0) {
@@ -1369,9 +1376,8 @@ void LongPressStop2() {
 void jasnoscLED(uint8_t nrLED, uint16_t jas) {
     switch (nrLED) {
         case 0:
-            // if (sp[0] == 1 || sp[1] == 1) sendNRF(3, jas);
             if (sendNRFoff == 0) {
-                sendNRF(3, jas);
+                sendNRF(3, jas,0,0);
             }
             sendNRFoff = 0;
             if (DevID != 0) {
@@ -1380,9 +1386,8 @@ void jasnoscLED(uint8_t nrLED, uint16_t jas) {
             // led[0].setupMax(jas);
             break;
         case 1:
-            // if (sp[0] == 1 || sp[1] == 1) sendNRF(4, jas);
             if (sendNRFoff == 0) {
-                sendNRF(4, jas);
+                sendNRF(4, jas,0,0);
             }
             sendNRFoff = 0;
             if (DevID != 0) {
@@ -1391,9 +1396,8 @@ void jasnoscLED(uint8_t nrLED, uint16_t jas) {
             // led[1].setupMax(jas);
             break;
         case 2:
-            // if (sp[0] == 1 || sp[1] == 1) sendNRF(5, jas);
             if (sendNRFoff == 0) {
-                sendNRF(5, jas);
+                sendNRF(5, jas,0,0);
             }
             sendNRFoff = 0;
             if (DevID != 0) {
@@ -2231,7 +2235,7 @@ void relays(uint8_t n) {
         // Sim800l.sendSms(getsmstel(), String(sp[n - 1]));
     } else {  // !! NIE TESTOWANE
         uint16_t data = (n << 8) + sp[n - 1];
-        sendNRF(6, data);
+        sendNRF(6, data,0,0);
         sendCAN(255, 6, data, 0);  //toID - 255 dla wszystkich,
     }
 }
@@ -2734,7 +2738,7 @@ void dimmodulestat() {
             break;
         case 2:
             if (aktualnyCzas - Cdmstat >= 10000UL) {
-                sendNRF(0, 0);
+                sendNRF(0, 0,0,0);
                 dmstat = 0;
             }
             break;

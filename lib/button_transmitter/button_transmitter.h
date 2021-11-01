@@ -32,7 +32,7 @@
 
 void EnableOTA();
 void readNRF();
-bool sendNRF(uint8_t fnID, uint16_t fndata);
+bool sendNRF(uint8_t fnID, uint16_t fndata1, uint16_t fndata2, uint16_t fndata3);
 void readCAN();
 void sendCAN(uint8_t toID, uint8_t fnID, uint32_t fndata, uint32_t fndata2);
 void wifiapstart();
