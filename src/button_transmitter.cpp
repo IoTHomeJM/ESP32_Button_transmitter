@@ -67,7 +67,9 @@ bool wifiSTAon = 0, wifiAPon = 1, buttonWIFIactived = 0, wifiAPconnected = 0, wi
 uint8_t wifiSTAonCN = 0;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 0, 60000);  // ntp
-int8_t timer1on = 0, timer2on = 0, timerCU = 0;
+uint16_t correctionTime = 7200;
+int8_t timer1on = 0, timer2on = 0, timerCU = 0, enWinterSummerT = 1;
+bool isWinter = 0;
 int TimerS1[4] = {0, 0, 0, 0};  // FOR Qtimer hour, minutes ,day ,month
 int TimerE1[4] = {0, 0, 0, 0};
 int TimerS2[4] = {0, 0, 0, 0};  // FOR Qtimer hour, minutes ,day ,month
@@ -108,7 +110,7 @@ float celsius = -99;
 
 //--> dla oled 0.9 cala Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 // #define OLED_RESET -1  // Reset pin # (or -1 if sharing Arduino reset pin)
-// Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
+// Adafruit_SSD1306 display(128, 64, &Wire, -1);
 //<--
 
 //--> dla oled 1.3 cala
@@ -140,8 +142,8 @@ uint8_t bWIFIenable = 0;
 char timestr[10] = "--:--:--";
 char* Timestamp = strdup("575420400");
 
-int Qhour, Qminutes, Qsecounds, Qday, Qmonth;
-Qtimers tl1, tl2, checkUpdate, doled;
+int Qhour, Qminutes, Qsecounds, Qday, Qmonth, Qyear;
+Qtimers tl1, tl2, checkUpdate, winterSummerTime;
 
 boolean SW1TouchEnable = 0;  // aktywacja funkcji przycisku dotyku
 boolean SW1TouchActive = 0;  // dotyk uruchamia sie dopiero po inicjalizacji
@@ -235,6 +237,7 @@ void setup() {
         timerCU = eepromBUF[62];
         displayON = eepromBUF[63];
         cdispdelay = eepromBUF[64];
+        enWinterSummerT = eepromBUF[65];
     }
 
     // konfikuracja poczatkowa przekaznika
@@ -313,6 +316,8 @@ void setup() {
         Serial.println(displayON);
         Serial.print("cdispdelay: ");
         Serial.println(cdispdelay);
+        Serial.print("enWinterSummerT: ");
+        Serial.println(enWinterSummerT);
     }
 
     strcpy(hostname, ("SW_" + String(nameDev) + "-" + String(DevID) + "_" + mcADR() + "").c_str());
@@ -462,7 +467,7 @@ void setup() {
     timerWifiSTAcheck = timer.setInterval(80000, wifiSTAcheck);  // co 80s
     timerServerON = timer.setInterval(150, serverON);
     timerWifiSTACon = timer.setInterval(6000, wifiSTAconnecting);
-    timertimeNetUpdate = timer.setInterval(43200000, timeNetUpdate);  // co 12h
+    timertimeNetUpdate = timer.setInterval(43200000, realTimeUpdate);  // co 12h
 
     // inicjalizacja czujnika temperatury DS18B20 tj. odczyt jego adresu
     ds.search(DallasAddr);  // NIE WIEM DLACZEGO ALE TRZEBA WYWOLAC 2 RAZY
@@ -494,12 +499,13 @@ void setup() {
         touch_pad_set_fsm_mode(TOUCH_FSM_MODE_TIMER);
         touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
     }
-    setTime(String(Timestamp).toInt() + 7200);  //ustawiamy zegarek
+    realTimeUpdate();
 
     tl1.set(timer1on, 1, TimerS1[0], TimerS1[1], TimerE1[0], TimerE1[1], TimerS1[2], TimerS1[3], TimerE1[2], TimerE1[3]);
     tl2.set(timer2on, 3, TimerS2[0], TimerS2[1], TimerE2[0], TimerE2[1], TimerS2[2], TimerS2[3], TimerE2[2], TimerE2[3]);
     checkUpdate.set(timerCU, 2, 21, 0, 0, 0, 0, 0, 0, 0);
-    doled.set(0, 3, 21, 0, 6, 0, 0, 0, 0, 0);
+
+    winterSummerTime.set(enWinterSummerT, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
     delayrelay1.set(1, relayToff1, 1, 1, 1);
     delayrelay2.set(2, relayToff2, 1, 1, 1);
@@ -568,7 +574,11 @@ void readNRF() {
             Serial.print("Wiadomosc NRF");
             Serial.print(NRFbuf[0]);
             Serial.print(", ");
-            Serial.println(NRFbuf[2] * 256 + NRFbuf[1]);
+            Serial.print(NRFbuf[2] * 256 + NRFbuf[1]);
+            Serial.print(", ");
+            Serial.print(NRFbuf[4] * 256 + NRFbuf[3]);
+            Serial.print(", ");
+            Serial.println(NRFbuf[6] * 256 + NRFbuf[5]);
         }
         uint8_t readNRFID = NRFbuf[0];
 
@@ -722,7 +732,7 @@ bool sendNRF(uint8_t fnID, uint16_t fndata1, uint16_t fndata2, uint16_t fndata3)
     radio.startListening();
     if (serialmode == 1) {
         if (rslt) {
-        Serial.println("Dane NRF wyslane");
+            Serial.println("Dane NRF wyslane");
         } else {
             Serial.println("Tx failed");
         }
@@ -993,7 +1003,7 @@ void wifiapstart() {
 }
 void wifiSTAstart() {
     if (serialmode == 1) {
-        Serial.print("wifiSTAstart ");
+        Serial.println("wifiSTAstart ");
     }
     if (ServerActive != 1) {
         timer.enable(timerWifiSTAcheck);
@@ -1058,11 +1068,11 @@ void wifiSTAcheck() {
         if ((wifiSTAon == 0) || (wifiAPconnected == 1)) {
             if (wifiAPconnected != 1) {
                 wifiSTAon = 1;
-                timeClient.begin();                // NTP
+
                 timer.enable(timertimeNetUpdate);  // NTP
                 zapamietanyCzasOLED = aktualnyCzas;
                 SMSbuf = "IP: " + WiFi.localIP().toString() + "";
-                timeNetUpdate();
+                realTimeUpdate();
                 if (timerCU) {
                     updatefw = FirmwareVersionCheck();
                 }
@@ -1115,7 +1125,8 @@ void wifiSTAcheck() {
     }
 }
 void buttonWIFIenable() {
-    sendNRF(1, 0,0,0);
+    sendNRF(1, 0, 0, 0);
+    
     zapiszweeprom = 0;
     bWIFIenable = 0;
     if (wifiSTAon == 0) {
@@ -1176,7 +1187,7 @@ void konfiguracja() {
         strcpy(nameDev, server.arg("nameDev").c_str());
         wifiAPon = server.arg("wifiAPon").toInt();
         strcpy(Timestamp, server.arg("ttime").c_str());
-        setTime(String(Timestamp).toInt() + 7200);
+        setTime(String(Timestamp).toInt() + correctionTime);
 
         TimerS1[0] = server.arg("timerS1h").toInt();
         TimerS1[1] = server.arg("timerS1m").toInt();
@@ -1198,6 +1209,7 @@ void konfiguracja() {
         timer1on = server.arg("timer1on").toInt();
         timer2on = server.arg("timer2on").toInt();
         timerCU = server.arg("timerCU").toInt();
+        enWinterSummerT = server.arg("enWinterSummerT").toInt();
 
         displayON = server.arg("displayON").toInt();
         cdispdelay = server.arg("cdispdelay").toInt();
@@ -1233,6 +1245,7 @@ void konfiguracja() {
 
             tl2.set(timer2on, 2, TimerS2[0], TimerS2[1], TimerE2[0], TimerE2[1], TimerS2[2], TimerS2[3], TimerE2[2], TimerE2[3]);
 
+            winterSummerTime.set(enWinterSummerT, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             create_json();
             server.send(200, "application/json", json);
         }
@@ -1305,6 +1318,7 @@ void create_json() {
            ",\"timer1on\":" + String(timer1on) +
            ",\"timer2on\":" + String(timer2on) +
            ",\"timerCU\":" + String(timerCU) +
+           ",\"enWinterSummerT\":" + String(enWinterSummerT) +
 
            "}]";
 }
@@ -1338,7 +1352,6 @@ void oneClick0() {
 void DoubleClick0() {
     dl2.DoubleClick();
 }
-
 void LongPressStart0() {
     dl2.start();
 }
@@ -1377,7 +1390,7 @@ void jasnoscLED(uint8_t nrLED, uint16_t jas) {
     switch (nrLED) {
         case 0:
             if (sendNRFoff == 0) {
-                sendNRF(3, jas,0,0);
+                sendNRF(3, jas, 0, 0);
             }
             sendNRFoff = 0;
             if (DevID != 0) {
@@ -1387,7 +1400,7 @@ void jasnoscLED(uint8_t nrLED, uint16_t jas) {
             break;
         case 1:
             if (sendNRFoff == 0) {
-                sendNRF(4, jas,0,0);
+                sendNRF(4, jas, 0, 0);
             }
             sendNRFoff = 0;
             if (DevID != 0) {
@@ -1397,7 +1410,7 @@ void jasnoscLED(uint8_t nrLED, uint16_t jas) {
             break;
         case 2:
             if (sendNRFoff == 0) {
-                sendNRF(5, jas,0,0);
+                sendNRF(5, jas, 0, 0);
             }
             sendNRFoff = 0;
             if (DevID != 0) {
@@ -1502,8 +1515,8 @@ void SettingWriteEEPROM() {
     if (serialmode == 1) {
         Serial.print("Zapisywanie ustawien...");
     }
-    // writeEEPROM(63, cdispdelay, 1);
-    // delay(6);
+    writeEEPROM(65, enWinterSummerT, 1);
+    delay(6);
     writeEEPROM(64, cdispdelay, 1);
     delay(6);
     writeEEPROM(63, displayON, 1);
@@ -1598,6 +1611,8 @@ void FactoryWriteEEPROM() {
     if (serialmode == 1) {
         Serial.print("Ustawienia fabryczne...");
     }
+    writeEEPROM(65, 1, 1);
+    delay(6);
     writeEEPROM(64, 10, 1);
     delay(6);
     writeEEPROM(63, 1, 1);
@@ -2045,7 +2060,15 @@ void aktualizuj_timestr() {
     Qday = day();
     Qmonth = month();
     Qsecounds = second();
-
+    Qyear = year();
+    // if (serialmode == 1) {
+    //     Serial.print("Qday ");
+    //     Serial.println(Qday);
+    //     Serial.print("Qmonth ");
+    //     Serial.println(Qmonth);
+    //     Serial.print("Qyear ");
+    //     Serial.println(Qyear);
+    // }
     timestr[0] = '0' + Qhour / 10;
     timestr[1] = '0' + Qhour % 10;
     timestr[3] = '0' + Qminutes / 10;
@@ -2057,7 +2080,8 @@ void aktualizuj_timestr() {
     tl1.tdcomp();  // local time timers
     tl2.tdcomp();
     checkUpdate.tdcomp();
-    doled.tdcomp();
+
+    winterSummerTime.winterSummerTime();
     disableoled();
 }
 
@@ -2235,15 +2259,24 @@ void relays(uint8_t n) {
         // Sim800l.sendSms(getsmstel(), String(sp[n - 1]));
     } else {  // !! NIE TESTOWANE
         uint16_t data = (n << 8) + sp[n - 1];
-        sendNRF(6, data,0,0);
+        sendNRF(6, data, 0, 0);
         sendCAN(255, 6, data, 0);  //toID - 255 dla wszystkich,
     }
 }
 
-void timeNetUpdate() {
-    timeClient.update();
-    setTime(timeClient.getEpochTime() + 7200);
-    sendCAN(255, 2, timeClient.getEpochTime(), 0);
+void realTimeUpdate() {
+    if (wifiSTAon == 1) {
+        timeClient.begin();
+        timeClient.update();
+        strcpy(Timestamp, String(timeClient.getEpochTime()).c_str());
+        setTime(String(Timestamp).toInt() + correctionTime);
+    } else {
+        setTime(String(Timestamp).toInt() + correctionTime);
+    }
+    winterSummerTime.winterSummerLastSunday();
+    if (DevID == 1) {
+        sendCAN(255, 2, String(Timestamp).toInt() + correctionTime, 0);
+    }
 }
 String mcADR() {
     String macADR = WiFi.macAddress();
@@ -2268,7 +2301,7 @@ void Qtimers::set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, 
             Serial.println("Litetimer - niewlasciwie podana godzina startu");
         }
     }
-    if (hre <= 24) {
+    if (hre < 24) {
         hourEnd = hre;
     } else {
         active = 0;
@@ -2325,12 +2358,56 @@ void Qtimers::set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, 
         }
     }
 }
+void Qtimers::winterSummerLastSunday() {
+    if (active == 1) {
+        if (serialmode == 1) {
+            Serial.println("Qtimer - check last sunday");
+        }
+        lastDay = 31;
+        march = 3;
+        october = 10;
+        dayMarch = floor(13 * (march + 1) / 5);
+        dayOctober = floor(13 * (october + 1) / 5);
+        a = floor(Qyear / 4);
+        b = floor(Qyear / 100);
+        c = floor(Qyear / 400);
+        dayMarch = (lastDay + dayMarch + Qyear + a - b + c) % 7;
+        dayOctober = (lastDay + dayOctober + Qyear + a - b + c) % 7;
+        lastSundayMarch = 31 - dayMarch + 1;
+        lastSundayOctober = 31 - dayOctober + 1;
+        if (serialmode == 1) {
+            Serial.println("--- lastSundayMarch: " + String(lastSundayMarch));
+            Serial.println("--- lastSundayOctober: " + String(lastSundayOctober));
+        }
+    }
+}
+void Qtimers::winterSummerTime() {
+    if (active == 1 && Qyear > 2020) {
+        if (isWinter == 0 && (Qmonth >= 10 || Qmonth <= 3) && Qday >= lastSundayOctober) {
+            correctionTime -= 3600;
+            setTime(String(Timestamp).toInt() + correctionTime);
+            isWinter = 1;
+            if (serialmode == 1) {
+                Serial.println("WINTER TIME START ");
+                Serial.print("--- correctionTime " + String(correctionTime));
+            }
+        }
+        if (isWinter == 1 && (Qmonth >= 3 && Qmonth <= 10) && Qday >= lastSundayMarch) {
+            correctionTime += 3600;
+            setTime(String(Timestamp).toInt() + correctionTime);
+            isWinter = 0;
+            if (serialmode == 1) {
+                Serial.println("SUMMER TIME START ");
+                Serial.print("--- correctionTime " + String(correctionTime));
+            }
+        }
+    }
+}
 void Qtimers::tdcomp() {
     if (active == 1) {
         if (QtFWCheck) updatefw = FirmwareVersionCheck();
 
         if (GE == 0 && (monthStart == 0 || monthStart == Qmonth) && (dayStart == 0 || dayStart == Qday) && (hourStart == 0 || hourStart == Qhour) && minutesStart == Qminutes) {
-            // if (GE == 0 && hourStart == Qhour && minutesStart == Qminutes) {
             GE = 1;
             if (serialmode == 1) Serial.print(" Qtimer - tdcomp START ");
             switch (function) {
@@ -2349,9 +2426,10 @@ void Qtimers::tdcomp() {
                     if (wifiSTAon == 0) buttonWIFIenable();
                     break;
                 case 3:
-                    displayON = 0;
-                    displaydelayon();
-                    if (serialmode == 1) Serial.println(" OLED off");
+
+                    break;
+                case 4:
+
                     break;
             }
         }
@@ -2375,8 +2453,10 @@ void Qtimers::tdcomp() {
                 case 2:
                     break;
                 case 3:
-                    displayON = 1;
-                    if (serialmode == 1) Serial.println(" oled on");
+
+                    break;
+                case 4:
+
                     break;
             }
         }
@@ -2719,7 +2799,7 @@ void update_error(int err) {
     if (serialmode == 1) Serial.printf("CALLBACK:  HTTP update fatal error code %d\n", err);
 }
 void disableoled() {
-    if ((aktualnyCzas - zapcOLED >= (cdispdelay * 1000)) && displayONdelay == 1) {
+    if (displayON == 0 && (aktualnyCzas - zapcOLED >= (cdispdelay * 1000)) && displayONdelay == 1) {
         displayONdelay = 0;
         display.clearDisplay();
         display.display();
@@ -2738,7 +2818,7 @@ void dimmodulestat() {
             break;
         case 2:
             if (aktualnyCzas - Cdmstat >= 10000UL) {
-                sendNRF(0, 0,0,0);
+                sendNRF(0, 0, 0, 0);
                 dmstat = 0;
             }
             break;

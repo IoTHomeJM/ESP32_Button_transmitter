@@ -90,7 +90,7 @@ String readStringFromEEPROM(int addrOffset);
 void wifiSTAconnecting();
 void buttonWIFIenable();
 void buttonWIFIdisable();
-void timeNetUpdate();
+void realTimeUpdate();
 String mcADR();
 int FirmwareVersionCheck();
 void firmwareupdate();
@@ -99,14 +99,16 @@ void update_finished();
 void update_progress(int cur, int total);
 void update_error(int err);
 class Qtimers {
-    int active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart, dayEnd, monthEnd;
+    uint8_t active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart, dayEnd, monthEnd;
+    int lastDay, march, october, dayMarch, dayOctober, a, b, c, lastSundayMarch, lastSundayOctober;
     bool GE = 0;
 
    public:
     //active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart
     Qtimers(int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0);  // konstruktor
-    ~Qtimers();                                                                                         // destruktor
-
+    ~Qtimers();
+    void winterSummerLastSunday();
+    void winterSummerTime();
     void tdcomp(void);
     void set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, int ms, int de, int me);
 };

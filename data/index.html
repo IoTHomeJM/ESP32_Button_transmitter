@@ -12170,6 +12170,12 @@
                                     <input class="formint contact-form__input contact-form__input--text" id="72" name="cdispdelay" type="number" min="10" max="255" value="10" />
                                 </span>
                             </div>
+                            <div class="contact-form__input-group">
+                                <label class="contact-form__label" for="73">Auto change winter/summert time:</label></br>
+                                <span class="p-4">
+                                    <input class="formint contact-form__input contact-form__input--text" id="73" name="enWinterSummerT" type="number" min="0" max="1" value="1" />
+                                </span>
+                            </div>
 
                     </div>
                     <div class="col-md-6 col-lg-6">
@@ -12502,6 +12508,7 @@
                     $("#62").val(JSON.stringify(res[2].dimmsetLastNL1));
                     $("#63").val(JSON.stringify(res[2].dimmsetLastNL2));
 
+
                     if (JSON.stringify(res[2].timer1on) == "1") {
                         $("#64").prop("checked", true);
                     } else {
@@ -12525,6 +12532,7 @@
                     }
 
                     $("#72").val(JSON.stringify(res[0].cdispdelay));
+                    $("#73").val(JSON.stringify(res[2].enWinterSummerT));
 
 
 
