@@ -110,11 +110,11 @@ float celsius = -99;
 
 //--> dla oled 0.9 cala Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 // #define OLED_RESET -1  // Reset pin # (or -1 if sharing Arduino reset pin)
-// Adafruit_SSD1306 display(128, 64, &Wire, -1);
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
 //<--
 
 //--> dla oled 1.3 cala
-Adafruit_SH1106 display(21, 22);
+// Adafruit_SH1106 display(21, 22);
 //<--
 bool displayON = 1, displayONdelay = 1;
 uint8_t cdispdelay = 10;
@@ -396,17 +396,17 @@ void setup() {
     button3.attachLongPressStop(LongPressStop0);
 
     // --> dla oled 0.9 cala // Address 0x3D for 128x64
-    // if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    //     if (serialmode == 1) {
-    //         Serial.println(F("SSD1306 allocation failed"));
-    //     }
-    //     for (;;)
-    //         ;
-    // }
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        if (serialmode == 1) {
+            Serial.println(F("SSD1306 allocation failed"));
+        }
+        for (;;)
+            ;
+    }
     // <--
 
     //--> dla oled 1.3 cala
-    display.begin(SH1106_SWITCHCAPVCC, 0x3C);
+    // display.begin(SH1106_SWITCHCAPVCC, 0x3C);
     //<--
 
     display.dim(oleddim);  // jasnosc wyswietlacza oled jesli 1 to przyciemnione
@@ -1126,7 +1126,7 @@ void wifiSTAcheck() {
 }
 void buttonWIFIenable() {
     sendNRF(1, 0, 0, 0);
-    
+
     zapiszweeprom = 0;
     bWIFIenable = 0;
     if (wifiSTAon == 0) {
@@ -1795,13 +1795,13 @@ void rysuj_jasnosc_na_lcd(uint16_t nrLED) {
                     display.setCursor(93, 4);
                     display.println("M I N");
                 }
-                if (dimmsetNow[2] == (dimmsetMax[1] + 1)) {
+                if (dimmsetNow[2] == (dimmsetMax[2] + 1)) {
                     display.setTextColor(BLACK);
                     display.setCursor(98, 4);
                     display.println("FULL");
                     display.setTextColor(WHITE);
                 }
-                if (dimmsetNow[2] == dimmsetMax[1]) {
+                if (dimmsetNow[2] == dimmsetMax[2]) {
                     display.setTextColor(BLACK);
                     display.setCursor(93, 4);
                     display.println("M A X");
@@ -2407,14 +2407,23 @@ void Qtimers::tdcomp() {
     if (active == 1) {
         if (QtFWCheck) updatefw = FirmwareVersionCheck();
 
-        if (GE == 0 && (monthStart == 0 || monthStart == Qmonth) && (dayStart == 0 || dayStart == Qday) && (hourStart == 0 || hourStart == Qhour) && minutesStart == Qminutes) {
+        if (GE == 0 && (monthStart == 0 || monthStart == Qmonth) && (dayStart == 0 || dayStart == Qday) && (hourStart == 0 || Qhour == hourStart) && Qminutes == minutesStart) {
             GE = 1;
             if (serialmode == 1) Serial.print(" Qtimer - tdcomp START ");
             switch (function) {
                 case 1:  // dim1 night light
-                    if (serialmode == 1) Serial.println("night light ON - dim 1,2,3");
+                    if (serialmode == 1) {
+                        Serial.println("night light ON - dim 1,2,3");
+                    }
+                    QtNightLightON = 1;
                     for (int i = 0; i < 4; i++) {
-                        if (dimmsetLastNL[i] > 0) dimmsetLast[i] = dimmsetLastNL[i];
+                        if (dimmsetLastNL[i] > 0) {
+                            dimmsetLastTemp[i] = dimmsetLast[i];
+                            dimmsetMaxTemp[i] = dimmsetMax[i];
+                            dimmsetMax[i] = dimmsetLast[i];
+                            dimmsetLast[i] = dimmsetLastNL[i];
+                        }
+
                         if (dimmsetNow[i] != 0) {
                             dimmsetNow[i] = dimmsetLast[i];
                             jasnoscLED(i, dimmsetNow[i]);
@@ -2433,17 +2442,24 @@ void Qtimers::tdcomp() {
                     break;
             }
         }
-        if (GE == 1 && (monthEnd == 0 || monthEnd == Qmonth) && (dayEnd == 0 || dayEnd == Qday) && (hourEnd == 0 || hourEnd == Qhour) && minutesEnd == Qminutes) {
+        if (GE == 1 && (monthEnd == 0 || monthEnd == Qmonth) && (dayEnd == 0 || dayEnd == Qday) && (hourEnd == 0 || Qhour == hourEnd) && Qminutes == minutesEnd) {
             GE = 0;
             if (serialmode == 1) Serial.print(" Qtimer - tdcomp END ");
             switch (function) {
                 case 1:
-                    if (serialmode == 1) Serial.println("night light OFF - dim 1,2,3");
+                    if (serialmode == 1) {
+                        Serial.println("night light OFF - dim 1,2,3");
+                    }
                     QtNightLightON = 0;
-                    if (dimmsetLastNL[0] > 0) dimmsetLast[0] = readEEPROM(0) * 256 + readEEPROM(1);
-                    if (dimmsetLastNL[1] > 0) dimmsetLast[1] = readEEPROM(6) * 256 + readEEPROM(7);
-                    if (dimmsetLastNL[2] > 0) dimmsetLast[2] = readEEPROM(8) * 256 + readEEPROM(9);
+                    // if (dimmsetLastNL[0] > 0) dimmsetLast[0] = readEEPROM(0) * 256 + readEEPROM(1);
+                    // if (dimmsetLastNL[1] > 0) dimmsetLast[1] = readEEPROM(6) * 256 + readEEPROM(7);
+                    // if (dimmsetLastNL[2] > 0) dimmsetLast[2] = readEEPROM(8) * 256 + readEEPROM(9);
                     for (int i = 0; i < 4; i++) {
+                        if (dimmsetLastNL[i] > 0) {
+                            dimmsetLast[i] = dimmsetLastTemp[i];
+                            dimmsetMax[i] = dimmsetMaxTemp[i];
+                        }
+
                         if (dimmsetNow[i] != 0) {
                             dimmsetNow[i] = dimmsetLast[i];
                             jasnoscLED(i, dimmsetNow[i]);
@@ -2468,17 +2484,28 @@ Dimlevel::Dimlevel(int nl) {
 Dimlevel::~Dimlevel() {
 }
 void Dimlevel::oneClick() {
-    if (updatefw == 1) updatefw = 3;
-
-    if (bWIFIenable == 5) {
+    if (updatefw == 1) {
+        updatefw = 3;
+    }
+    // 1 - oneClick (light on),
+    // 2 - DoubleClick (light max),
+    // 3 - DoubleClick (llight last),
+    // 4 - oneClick (light off),
+    // 5 - oneClick (light on)
+    if (bWIFIenable == 4) {
         buttonWIFIenable();
-    } else {
-        bWIFIenable = 1;
+    } else if (bWIFIenable == 3) {
+        bWIFIenable = 4;
+    } else if (bWIFIenable == 1) {
+        bWIFIenable = 0;
     }
 
     if (displayON == 0) displaydelayon();
 
     if (dimmsetNow[nrLED] == 0) {
+        if (bWIFIenable == 0) {
+            bWIFIenable = 1;
+        }
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     } else if (dimmsetNow[nrLED] > 0 && dimmsetNow[nrLED] <= dimmsetMax[nrLED] + 1) {  //wylaczamy
@@ -2493,8 +2520,15 @@ void Dimlevel::oneClick() {
     }
 }
 void Dimlevel::DoubleClick() {
+    // if (bWIFIenable == 1) {
+    //     bWIFIenable = 3;
+    // }
     if (bWIFIenable == 1) {
+        bWIFIenable = 2;
+    } else if (bWIFIenable == 2) {
         bWIFIenable = 3;
+    } else {
+        bWIFIenable = 0;
     }
 
     if (displayON == 0) displaydelayon();
@@ -2530,9 +2564,9 @@ void Dimlevel::start() {
         rysujemy_na_lcd();
     }
 
-    if (bWIFIenable == 3) {
-        bWIFIenable = 5;
-    }
+    // if (bWIFIenable == 3) {
+    //     bWIFIenable = 5;
+    // }
 
     if (displayON == 0) displaydelayon();
     numDIM = nrLED;
@@ -2581,11 +2615,16 @@ void Dimlevel::change() {
                     dimmsetNow[nrLED] = dimmset_min;
                     zapamietanyCzas2 = aktualnyCzas;
                 }
-                if (QtNightLightON == 0) dimmsetLast[nrLED] = dimmsetNow[nrLED];
-
-                if (displayON == 0) displaydelayon();
+                if (displayON == 0) {
+                    displaydelayon();
+                }
+                // if (QtNightLightON == 0) dimmsetLast[nrLED] = dimmsetNow[nrLED];
+                dimmsetLast[nrLED] = dimmsetNow[nrLED];
                 jasnoscLED(nrLED, dimmsetNow[nrLED]);
-                Dimlevel::saveeeprom(dimmsetNow[nrLED]);
+
+                if (QtNightLightON == 0) {
+                    Dimlevel::saveeeprom(dimmsetNow[nrLED]);
+                }
             }
             if (dimmsetNow[nrLED] >= dimmsetMax[nrLED] || dimmsetNow[nrLED] <= dimmset_min) {
                 dimming_up = !dimming_up;
@@ -2651,8 +2690,17 @@ void Delayrelay::delaydim() {
     } else if (roff == 0 && (aktualnyCzas - zapczas >= (relayToff * 1000))) {
         roff = 1;
         relays(nrrelay);  //relay off
-        dmstat = 1;
-        sendNRFoff = 1;
+
+        dmstat = 1;      //for dimm module status check
+        sendNRFoff = 1;  // if relay off then sendNRF() off becouse dimm module will be start and send ready status to master (button module), then master sendNRF() with config.
+
+        if (QtNightLightON == 1) {  // past dimLevel when NightLight is ON.
+            for (int i = 0; i < 4; i++) {
+                if (dimmsetLastNL[i] > 0 && (dimmsetLastNL[i] != dimmsetLast[i])) {
+                    dimmsetLast[i] = dimmsetLastNL[i];
+                }
+            }
+        }
     }
 }
 void Delayrelay::set(int nrr, int rtoff, int d0, int d1, int d2) {
