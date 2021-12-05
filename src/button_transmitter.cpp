@@ -13,12 +13,12 @@ String FirmwareVer = {"1.0"}, FirmwareVerNEW = {"0.0"}, dimFirmwareVerNEW = {"0.
 bool QtFWCheck = 0;
 int updatefw = 0;
 int zaok = 5;          // zaokraglenia suwaka jasnosci na oled
-int dimActivNumb = 0;  //dla rysowania jasnosci na oled.
+int dimActivNumb = 0;  // dla rysowania jasnosci na oled.
 bool checkOne1 = 1;
 int upfwcur = 0, upfwtotal = 1000;
-unsigned int czasnazapisweeprom = 6000;  //w milisekundach, 6 sekund, w przypadku brak zmiany jasnosci przez ten czas powoduje zapis w eeprom
+unsigned int czasnazapisweeprom = 6000;  // w milisekundach, 6 sekund, w przypadku brak zmiany jasnosci przez ten czas powoduje zapis w eeprom
 
-//const byte portLED = 19, portLED2 = 18, portLED3 = 17;  // dostepne: DIM1/R - 19 | DIM2/G - 18 | DIM3/B - 17
+// const byte portLED = 19, portLED2 = 18, portLED3 = 17;  // dostepne: DIM1/R - 19 | DIM2/G - 18 | DIM3/B - 17
 
 uint16_t FreqLED = 25000;     // czestotliwosc LED
 uint16_t ResolutionLED = 10;  // Rozdzielczosc w bitach.
@@ -38,7 +38,7 @@ bool dim1 = 0, dim2 = 0, dim3 = 0, LightOnBoot = 0;
 uint8_t DimUpDownResolution = 20;  // szybkosc regulacji jasnosci led za pomoca przycisku
 
 // dla przycisku, regulacja jasnosci
-bool QtNightLightON = 0;  //blokada zapisu nowej jasnosci do eeprom gdy nigt light wlaczony
+bool QtNightLightON = 0;  // blokada zapisu nowej jasnosci do eeprom gdy nigt light wlaczony
 int dimmsetNow[4] = {0};
 uint8_t numDIM = 1;
 uint16_t dimmsetLast[4] = {0};
@@ -77,6 +77,7 @@ int TimerE2[4] = {0, 0, 0, 0};
 //<--server
 
 //--> CAN-BUS
+
 uint8_t Flag = 0;      // 1 bit
 uint8_t SubDevID = 0;  // 4 bity od 0 do 15. wykorzystywane np po to, aby zarzadzac drugim modulem po CAN z tym zamym DevID. Gdy nadajnik i dimmer sa  polaczone z CAN-BUS dajemy w dimmer 1-15
 uint8_t DevID = 0;     // 8bit ID tego urzadzenia, ID 1 to master.
@@ -88,17 +89,17 @@ bool OnDevices[25] = {0};  // lista wlaczonych urzadzen - tylko dla mastera. tes
 SimpleTimer timer;
 
 const uint8_t SW1pin = 19, SW2pin = 18, SW3pin = 17, SW4pin = 16;
-//const uint8_t SW1pin = 0;
+// const uint8_t SW1pin = 0;
 const uint8_t SW1TouchPin = 33;
 
 //--> NRF settings
-int8_t dmstat = 0;       //dimmodulestat
-int8_t dmstaterror = 0;  //dimmodulestat
+int8_t dmstat = 0;       // dimmodulestat
+int8_t dmstaterror = 0;  // dimmodulestat
 byte NRFbuf[32] = {0};   // bufor dla nrf
 uint32_t RF24_rxAddr = 2138439680;
 uint8_t NRFchannel = 1;
 uint8_t PALevel = 1;             // 0=MIN, 1=LOW, 2=HIGH, 3=MAX
-RF24 radio(27, 15, 14, 12, 13);  //JLU //CE CSN SCK MISO MOSI // ta trzeba uzywac do ESP32 https://github.com/nhatuan84/RF24
+RF24 radio(27, 15, 14, 12, 13);  // JLU //CE CSN SCK MISO MOSI // ta trzeba uzywac do ESP32 https://github.com/nhatuan84/RF24
 //<--NRF
 
 //--> temeratura
@@ -109,30 +110,30 @@ float celsius = -99;
 //<--
 
 //--> dla oled 0.9 cala Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-// #define OLED_RESET -1  // Reset pin # (or -1 if sharing Arduino reset pin)
-Adafruit_SSD1306 display(128, 64, &Wire, -1);
+// // #define OLED_RESET -1  // Reset pin # (or -1 if sharing Arduino reset pin)
+// Adafruit_SSD1306 display(128, 64, &Wire, -1);
 //<--
 
 //--> dla oled 1.3 cala
-// Adafruit_SH1106 display(21, 22);
+Adafruit_SH1106 display(21, 22);
 //<--
 bool displayON = 1, displayONdelay = 1;
 uint8_t cdispdelay = 10;
-const uint8_t logo16_wifi_bmp[] PROGMEM =  //logo wifi 16
+const uint8_t logo16_wifi_bmp[] PROGMEM =  // logo wifi 16
     {
         0x00, 0x00, 0x00, 0x00, 0xE0, 0x07, 0x38, 0x1C, 0xC4, 0x23, 0x72, 0x4E,
         0x08, 0x10, 0xE4, 0x27, 0x10, 0x0C, 0x90, 0x09, 0x40, 0x02, 0x60, 0x06,
         0x40, 0x02, 0x80, 0x01, 0x00, 0x00, 0x00, 0x00};
-const uint8_t Signal816[16] PROGMEM =  //mobie signal
+const uint8_t Signal816[16] PROGMEM =  // mobie signal
     {
         0xFE, 0x02, 0x92, 0x0A, 0x54, 0x2A, 0x38, 0xAA, 0x12, 0xAA, 0x12, 0xAA, 0x12, 0xAA, 0x12, 0xAA};
 
-const uint8_t Msg816[16] PROGMEM =  //message
+const uint8_t Msg816[16] PROGMEM =  // message
     {
         0x1F, 0xF8, 0x10, 0x08, 0x18, 0x18, 0x14, 0x28, 0x13, 0xC8, 0x10, 0x08, 0x10, 0x08, 0x1F, 0xF8};
 
-OneButton button(SW1pin, true);   //SW1pin
-OneButton button1(SW2pin, true);  //SW2pin
+OneButton button(SW1pin, true);   // SW1pin
+OneButton button1(SW2pin, true);  // SW2pin
 OneButton button2(SW3pin, true);
 OneButton button3(SW4pin, true);
 Dimlevel dl0(0), dl1(1), dl2(2);
@@ -152,14 +153,14 @@ uint8_t SW1TouchMax = 255;  // ustalana po inicjalizacji wartosc dotyku nie naci
 boolean SW1TouchPressed = 0;
 boolean SW1TouchPrevious = 0;
 uint8_t SW1TouchFilter = 0;
-int SW1TouchValMin = 255;  //tylko do testow
+int SW1TouchValMin = 255;  // tylko do testow
 
 boolean OTAActive = 0, SettingSave = 0;
 uint8_t FactorySet = 0;
 String json;
 
-Sim800l Sim800l;     //to declare the library
-int serialmode = 2;  //0-wylaczony, 1-wlaczoy LOG, 2-wlaczony SIM
+Sim800l Sim800l;     // to declare the library
+int serialmode = 1;  // 0-wylaczony, 1-wlaczoy LOG, 2-wlaczony SIM
 String SMSbuf = "";  // bufor SMS
 char incomingByte;   // zaciaganie bitow z seriala
 bool gsminit = 0, GSMmsg = 0;
@@ -175,7 +176,7 @@ uint16_t relayToff2 = 5;
 Delayrelay delayrelay1, delayrelay2;  // nr przekaznika, opiznienie, dim0, dim1,dim3
 
 int timerWifiSTAcheck = 0, timerWifiSTACon = 0, timerServerON = 0, timerbuttonWIFIdisable = 0, timertimeNetUpdate = 0;
-//adresy eeprom
+// adresy eeprom
 int FactorySetE = 37;
 int nameDevE = 2200;
 
@@ -248,7 +249,7 @@ void setup() {
 
     if (serialmode == 1) {
         Serial.begin(115200);      // dla serial monitro
-    } else if (serialmode == 2) {  //dla SIM
+    } else if (serialmode == 2) {  // dla SIM
         Serial.begin(9600);
     } else {
     }
@@ -345,18 +346,18 @@ void setup() {
     led[2].begin(2, HIGH);
 
     if (LightOnBoot == 1) {  //max jasnosc podczas startu procesora
-        dimmsetNow[0] = dimmsetLast[0]; 
+        dimmsetNow[0] = dimmsetLast[0];
         jasnoscLED(0, dimmsetNow[0]);
     }
 
     if (serialmode == 1) {
         Serial.print("Nastawy po wlaczeniu: Jasnosc:");
-        Serial.println(dimmsetLast[0]);        
+        Serial.println(dimmsetLast[0]);
     }
     //<--
     */
     //--> CAN-BUS
-    if (DevID == 0) {
+    if (DevID > 0) {
         if (CAN0.begin(500000)) {  // predkosc CAN-BUS
             if (allFrame == 0) {
                 CAN0.setRXFilter(DevID, 0x000000FF, true);  // przyjmuje ramki tylko o danym ID
@@ -396,17 +397,17 @@ void setup() {
     button3.attachLongPressStop(LongPressStop0);
 
     // --> dla oled 0.9 cala // Address 0x3D for 128x64
-    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-        if (serialmode == 1) {
-            Serial.println(F("SSD1306 allocation failed"));
-        }
-        for (;;)
-            ;
-    }
+    // if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    //     if (serialmode == 1) {
+    //         Serial.println(F("SSD1306 allocation failed"));
+    //     }
+    //     for (;;)
+    //         ;
+    // }
     // <--
 
     //--> dla oled 1.3 cala
-    // display.begin(SH1106_SWITCHCAPVCC, 0x3C);
+    display.begin(SH1106_SWITCHCAPVCC, 0x3C);
     //<--
 
     display.dim(oleddim);  // jasnosc wyswietlacza oled jesli 1 to przyciemnione
@@ -421,7 +422,7 @@ void setup() {
     radio.setCRCLength(RF24_CRC_8);
     radio.setPALevel(PALevel);
     radio.setDataRate(RF24_250KBPS);
-    radio.setRetries(15, 15);                //delay,count
+    radio.setRetries(15, 15);                // delay,count
     radio.openWritingPipe(RF24_rxAddr + 1);  // +1 to adres 1 odbiornika. jesli chcemy wyslac do innego to trzeba odpowiednio zwiekszyc adres 2,3 itd
     radio.openReadingPipe(1, RF24_rxAddr);
     radio.startListening();
@@ -442,11 +443,11 @@ void setup() {
             cz++;
         }
         if (gsminit == 1) {
-            Serial.println("AT+CMGF=1");  //Ustaw SMS na tryb tekstowy
+            Serial.println("AT+CMGF=1");  // Ustaw SMS na tryb tekstowy
             delay(1000);
-            Serial.println("AT+CNMI=1,2,0,0,0");  //Procedura obsługi nowo przybyłych wiadomości
+            Serial.println("AT+CNMI=1,2,0,0,0");  // Procedura obsługi nowo przybyłych wiadomości
             delay(1000);
-            //Serial.println("AT+CMGL=\"REC UNREAD\"");  // Czytaj Nieprzeczytane wiadomości
+            // Serial.println("AT+CMGL=\"REC UNREAD\"");  // Czytaj Nieprzeczytane wiadomości
         } else {
             SMSbuf = "Nie wykryto GSM";
             rysujemy_na_lcd();
@@ -460,14 +461,15 @@ void setup() {
 
     //// TIMERY ////
     ///////////////
-
-    timerbuttonWIFIdisable = timer.setInterval(600000, buttonWIFIdisable);  //za 10 min
+    // timerdownloadSettings = timer.setInterval(100, downloadSettings);
+    // timerdownloadSettings = timer.setTimer(100, downloadSettings, 20);
+    timerServerON = timer.setInterval(150, serverON);
     timer.setInterval(1000, aktualizuj_timestr);
     timer.setInterval(2000, InicjacjaOdczytTemperatury);
-    timerWifiSTAcheck = timer.setInterval(80000, wifiSTAcheck);  // co 80s
-    timerServerON = timer.setInterval(150, serverON);
+    timerWifiSTAcheck = timer.setInterval(90000, wifiSTAcheck);  // co 90s
     timerWifiSTACon = timer.setInterval(6000, wifiSTAconnecting);
-    timertimeNetUpdate = timer.setInterval(43200000, realTimeUpdate);  // co 12h
+    timerbuttonWIFIdisable = timer.setInterval(600000, buttonWIFIdisable);  // za 10 min
+    timertimeNetUpdate = timer.setInterval(43200000, realTimeUpdate);       // co 12h
 
     // inicjalizacja czujnika temperatury DS18B20 tj. odczyt jego adresu
     ds.search(DallasAddr);  // NIE WIEM DLACZEGO ALE TRZEBA WYWOLAC 2 RAZY
@@ -540,7 +542,7 @@ void loop() {
     }
     delayrelay1.delaydim();
     delayrelay2.delaydim();
-    dl0.change();  //dim level
+    dl0.change();  // dim level
     dl1.change();
     dl2.change();
 
@@ -618,7 +620,7 @@ void readNRF() {
                 }
                 break;
             case 6: {  // przekaznik wirtualny
-                //sp[NRFbuf[1]] = NRFbuf[2];  // nie wiem czy dobrze
+                // sp[NRFbuf[1]] = NRFbuf[2];  // nie wiem czy dobrze
             }
 
             break;
@@ -778,11 +780,30 @@ void readCAN() {
             Serial.print(" fndata2: ");
             Serial.println(inFrame.data.uint32[1]);
         }
+
+        String incommingFirmwareVer;
+        char inFirmVer[4];
+
         switch (fnID) {
-            case 1:  // odpowiadamy masterowi obecnosc urzadzenia na CANie
-                sendCAN(1, 1, 0, 0);
+            case 1:  // nie dziala wrocic pozniej
+                // for (int i = 0; i < newStrLen; i++) {
+                //     data[i] = readEEPROM(addrOffset + 1 + i);
+                // }
+                // data[newStrLen] = '\0';
+
+                // inFirmVer[0] = (inFrame.data.uint32[0] >> 16) & 0xFF;
+                // inFirmVer[1] = (inFrame.data.uint32[0] >> 8) & 0xFF;
+                // inFirmVer[2] = (inFrame.data.uint32[0]) & 0xFF;
+                inFirmVer[0] = inFrame.data.uint8[0];
+                inFirmVer[1] = inFrame.data.uint8[1];
+                inFirmVer[2] = inFrame.data.uint8[2];
+
+                inFirmVer[3] = '\0';
+                incommingFirmwareVer = String(inFirmVer);
+
+                // sendCAN(1, 1, 0, 0);
                 if (serialmode == 1) {
-                    Serial.println("fnID 1, ramka wyslana");
+                    Serial.println("incommingFirmwareVer: " + incommingFirmwareVer);
                 }
                 break;
             case 2:  // synchronizacja czasu
@@ -831,7 +852,7 @@ void readCAN() {
                 } else {
                     if (wifiSTAon == 0) {
                         buttonWIFIenable();
-                    }  //wlacza wifi i aktualizuje firmware
+                    }  // wlacza wifi i aktualizuje firmware
                     updatefw = 2;
                 }
 
@@ -947,7 +968,7 @@ void sendCAN(uint8_t toID, uint8_t fnID, uint32_t fndata, uint32_t fndata2) {
         Serial.print(" fnID: ");
         Serial.print(fnID);
         Serial.print(" fndata: ");
-        Serial.println(fndata);
+        Serial.print(fndata);
         Serial.print(" fndata2: ");
         Serial.println(fndata2);
     }
@@ -1127,7 +1148,7 @@ void wifiSTAcheck() {
 void buttonWIFIenable() {
     sendNRF(1, 0, 0, 0);
 
-    zapiszweeprom = 0;
+    // zapiszweeprom = 0;
     bWIFIenable = 0;
     if (wifiSTAon == 0) {
         timer.enable(timerbuttonWIFIdisable);
@@ -1392,8 +1413,8 @@ void jasnoscLED(uint8_t nrLED, uint16_t jas) {
             if (sendNRFoff == 0) {
                 sendNRF(3, jas, 0, 0);
             }
-            sendNRFoff = 0;
-            if (DevID != 0) {
+
+            if (DevID > 0) {
                 sendCAN(DevID, 3, jas, 0);
             }
             // led[0].setupMax(jas);
@@ -1402,8 +1423,8 @@ void jasnoscLED(uint8_t nrLED, uint16_t jas) {
             if (sendNRFoff == 0) {
                 sendNRF(4, jas, 0, 0);
             }
-            sendNRFoff = 0;
-            if (DevID != 0) {
+
+            if (DevID > 0) {
                 sendCAN(DevID, 4, jas, 0);
             }
             // led[1].setupMax(jas);
@@ -1412,8 +1433,8 @@ void jasnoscLED(uint8_t nrLED, uint16_t jas) {
             if (sendNRFoff == 0) {
                 sendNRF(5, jas, 0, 0);
             }
-            sendNRFoff = 0;
-            if (DevID != 0) {
+
+            if (DevID > 0) {
                 sendCAN(DevID, 5, jas, 0);
             }
             // led[2].setupMax(jas);
@@ -1421,6 +1442,7 @@ void jasnoscLED(uint8_t nrLED, uint16_t jas) {
     }
     numDIM = nrLED;
     rysuj_jasnosc_na_lcd(nrLED);
+    if (sendNRFoff == 1) sendNRFoff = 0;
 }
 
 //--> eeprom
@@ -1553,7 +1575,7 @@ void SettingWriteEEPROM() {
     delay(6);
     writeStringToEEPROM(2000, ssid);
     delay(6);
-    writeEEPROM(34, relayToff2, 2);  //34,35
+    writeEEPROM(34, relayToff2, 2);  // 34,35
     delay(6);
     writeEEPROM(32, relayToff1, 2);  // 32, 33
     delay(6);
@@ -1630,12 +1652,12 @@ void FactoryWriteEEPROM() {
     writeEEPROM(54, 10, 2);
     delay(6);
     for (int i = 0; i < 16; i++) {
-        writeEEPROM(38 + i, 0, 1);  //od 38 do 53
+        writeEEPROM(38 + i, 0, 1);  // od 38 do 53
         delay(6);
     }
     writeStringToEEPROM(nameDevE, "nD");
     delay(6);
-    writeEEPROM(FactorySetE, 123, 1);  //37
+    writeEEPROM(FactorySetE, 123, 1);  // 37
     delay(6);
     writeEEPROM(36, 1, 1);
     delay(6);
@@ -1645,7 +1667,7 @@ void FactoryWriteEEPROM() {
     delay(6);
     writeStringToEEPROM(2066, "575420400");
     delay(6);
-    writeEEPROM(34, 5, 2);  //34,35 relayToff2
+    writeEEPROM(34, 5, 2);  // 34,35 relayToff2
     delay(6);
     writeEEPROM(32, 5, 2);  // 32, 33 relayToff1
     delay(6);
@@ -1938,14 +1960,13 @@ void rysujemy_na_lcd() {
             display.print("Curent: " + FirmwareVer + " New: " + FirmwareVerNEW);
         } else {
             if (checkOne1 == 1) {
-                if (dimmsetLast[0] != 0) {
-                    dimActivNumb++;
+                for (int i = 0; i < 3; i++) {
+                    if (dimmsetLast[i] != 0) {
+                        dimActivNumb++;
+                    }
                 }
-                if (dimmsetLast[1] != 0) {
-                    dimActivNumb++;
-                }
-                if (dimmsetLast[2] != 0) {
-                    dimActivNumb++;
+                if (dimActivNumb == 0) {
+                    dimActivNumb = 1;
                 }
                 checkOne1 = 0;
             }
@@ -2191,8 +2212,8 @@ void InicjacjaSW1Touch() {
     // uruchamiane przy starcie w petli 10 razy, ustalamy poziom MAX dotyku oraz wlaczamy TouchActive
     static uint8_t licz = 0;
     static uint8_t liczval[10];
-    liczval[licz++] = pobierzTouchVal(SW1TouchPin, 0, 0);  //Serial.print("licz = "); Serial.print(licz); Serial.print("liczval = "); Serial.print(liczval[(licz-1)]); Serial.println();
-    if (licz == 10) {                                      //dwa pomijamy i wyciagamy srednia z kolejnych 8 odczytow
+    liczval[licz++] = pobierzTouchVal(SW1TouchPin, 0, 0);  // Serial.print("licz = "); Serial.print(licz); Serial.print("liczval = "); Serial.print(liczval[(licz-1)]); Serial.println();
+    if (licz == 10) {                                      // dwa pomijamy i wyciagamy srednia z kolejnych 8 odczytow
         uint16_t tvsumtmp = 0;
         for (int i = 2; i < 10; i++) {
             tvsumtmp += liczval[i];
@@ -2205,7 +2226,7 @@ void InicjacjaSW1Touch() {
         SW1TouchActive = 1;
     }
 }
-//odczyt najnowszego sms
+// odczyt najnowszego sms
 void readSMS() {
     if (Serial.available() > 0) {
         SMSbuf = "";
@@ -2217,11 +2238,11 @@ void readSMS() {
         // tutaj beda sie wykonywaly polecenia z SMS
 
         if (SMSbuf.indexOf("@ONOFF1") > -1) {
-            relays(1);  //pierwszy przekaznik
+            relays(1);  // pierwszy przekaznik
             GSMmsg = 1;
         }
         if (SMSbuf.indexOf("@ONOFF2") > -1) {
-            relays(2);  //drugi przekaznik
+            relays(2);  // drugi przekaznik
             GSMmsg = 1;
         }
         if (SMSbuf.indexOf("@SERVERONOFF") > -1) {
@@ -2232,7 +2253,7 @@ void readSMS() {
         rysujemy_na_lcd();  // wyswietl SMS na OLED
         if (GSMmsg == 1) {
             // if (SMSbuf.indexOf("OK") == -1) {
-            Serial.println("AT+CMGDA=\"DEL ALL\"");  //usuwamy wszystkie SMS
+            Serial.println("AT+CMGDA=\"DEL ALL\"");  // usuwamy wszystkie SMS
             // }
             GSMmsg = 0;
         }
@@ -2247,7 +2268,7 @@ String getsmstel() {
         return "";
     }
 }
-//dla spowolnienia www
+// dla spowolnienia www
 void serverON() {
     server.handleClient();
 }
@@ -2260,7 +2281,7 @@ void relays(uint8_t n) {
     } else {  // !! NIE TESTOWANE
         uint16_t data = (n << 8) + sp[n - 1];
         sendNRF(6, data, 0, 0);
-        sendCAN(255, 6, data, 0);  //toID - 255 dla wszystkich,
+        sendCAN(255, 6, data, 0);  // toID - 255 dla wszystkich,
     }
 }
 
@@ -2271,11 +2292,16 @@ void realTimeUpdate() {
         strcpy(Timestamp, String(timeClient.getEpochTime()).c_str());
         setTime(String(Timestamp).toInt() + correctionTime);
     } else {
-        setTime(String(Timestamp).toInt() + correctionTime);
+        if (DevID > 1) {
+            sendCAN(1, 9, 0, 0);
+        }
+        // setTime(String(Timestamp).toInt() + correctionTime);
     }
+
     winterSummerTime.winterSummerLastSunday();
     if (DevID == 1) {
         sendCAN(255, 2, String(Timestamp).toInt() + correctionTime, 0);
+        Serial.println("realTimeUpdate send CAN frame ");
     }
 }
 String mcADR() {
@@ -2292,6 +2318,10 @@ Qtimers::~Qtimers() {
 void Qtimers::set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, int ms, int de, int me) {
     active = ac;
     function = fu;
+
+    startTimeMinutes = hourStart * 60 + minutesStart;
+    endTimeMinutes = hourEnd * 60 + minutesEnd;
+    hourCompare = (hourStart > hourEnd) ? 1 : 0;
 
     if (hrs <= 24) {
         hourStart = hrs;
@@ -2387,9 +2417,15 @@ void Qtimers::winterSummerTime() {
             correctionTime -= 3600;
             setTime(String(Timestamp).toInt() + correctionTime);
             isWinter = 1;
+
             if (serialmode == 1) {
                 Serial.println("WINTER TIME START ");
-                Serial.print("--- correctionTime " + String(correctionTime));
+                Serial.println("--- correctionTime " + String(correctionTime));
+            }
+
+            if (DevID == 1) {
+                Serial.println("--- correctionTime correctionTime send CAN frame ");
+                sendCAN(255, 2, String(Timestamp).toInt() + correctionTime, 0);
             }
         }
         if (isWinter == 1 && (Qmonth >= 3 && Qmonth <= 10) && Qday >= lastSundayMarch) {
@@ -2405,10 +2441,13 @@ void Qtimers::winterSummerTime() {
 }
 void Qtimers::tdcomp() {
     if (active == 1) {
+        realTimeMinutes = Qhour * 60 + Qminutes;
         if (QtFWCheck) updatefw = FirmwareVersionCheck();
 
-        if (GE == 0 && (monthStart == 0 || monthStart == Qmonth) && (dayStart == 0 || dayStart == Qday) && (hourStart == 0 || Qhour == hourStart) && Qminutes == minutesStart) {
-            GE = 1;
+        if (tStart == 1 && (monthStart == 0 || Qmonth == monthStart) && (dayStart == 0 || Qday == dayStart) &&
+            ((hourCompare && ((realTimeMinutes >= startTimeMinutes) || (realTimeMinutes < endTimeMinutes))) || (!hourCompare && ((realTimeMinutes >= startTimeMinutes) && (realTimeMinutes < endTimeMinutes))))) {
+            tStart = 0;
+            tStop = 1;
             if (serialmode == 1) Serial.print(" Qtimer - tdcomp START ");
             switch (function) {
                 case 1:  // dim1 night light
@@ -2442,8 +2481,12 @@ void Qtimers::tdcomp() {
                     break;
             }
         }
-        if (GE == 1 && (monthEnd == 0 || monthEnd == Qmonth) && (dayEnd == 0 || dayEnd == Qday) && (hourEnd == 0 || Qhour == hourEnd) && Qminutes == minutesEnd) {
-            GE = 0;
+
+        
+        if (tStop == 1 && (monthEnd == 0 || Qmonth == monthEnd) && (dayEnd == 0 || Qday == dayEnd) && ((hourCompare && ((realTimeMinutes < startTimeMinutes) && (realTimeMinutes >= endTimeMinutes))) || (!hourCompare && ((realTimeMinutes < startTimeMinutes) || (realTimeMinutes >= endTimeMinutes))))) {
+            tStop = 0;
+            tStart = 1;
+
             if (serialmode == 1) Serial.print(" Qtimer - tdcomp END ");
             switch (function) {
                 case 1:
@@ -2508,7 +2551,7 @@ void Dimlevel::oneClick() {
         }
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
-    } else if (dimmsetNow[nrLED] > 0 && dimmsetNow[nrLED] <= dimmsetMax[nrLED] + 1) {  //wylaczamy
+    } else if (dimmsetNow[nrLED] > 0 && dimmsetNow[nrLED] <= dimmsetMax[nrLED] + 1) {  // wylaczamy
         dimmsetNow[nrLED] = 0;
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
@@ -2533,18 +2576,18 @@ void Dimlevel::DoubleClick() {
 
     if (displayON == 0) displaydelayon();
 
-    //wlaczamy na MAX
+    // wlaczamy na MAX
     if (dimmsetNow[nrLED] > 0 && dimmsetLast[0] < (dimmsetMax[nrLED] + 1) && dimmsetNow[nrLED] < (dimmsetMax[nrLED] + 1)) {
         dimmsetLast[nrLED] = dimmsetNow[nrLED];
         dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
-    //wlaczamy na poprzedni poziom
+    // wlaczamy na poprzedni poziom
     else if (dimmsetNow[nrLED] == (dimmsetMax[nrLED] + 1) && dimmsetLast[nrLED] != (dimmsetMax[nrLED] + 1)) {
         dimmsetNow[nrLED] = dimmsetLast[nrLED];
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
     }
-    //na MAX z wylaczonego
+    // na MAX z wylaczonego
     else if (dimmsetNow[nrLED] == 0) {
         dimmsetNow[nrLED] = (dimmsetMax[nrLED] + 1);
         jasnoscLED(nrLED, dimmsetNow[nrLED]);
@@ -2680,19 +2723,31 @@ Delayrelay::Delayrelay(int nrr, int rtoff, int d0, int d1, int d2) {
     Delayrelay::set(nrr, rtoff, d0, d1, d2);
 }
 void Delayrelay::delaydim() {
-    if ((dimmsetNow[0] > dim0 || dimmsetNow[1] > dim1 || dimmsetNow[2] > dim2) && sp[nrrelay - 1] == 0) {
-        relays(nrrelay);  //relay on
-        roff = 1;
-        dmstat = 0;
-    } else if (roff == 1 && dimmsetNow[0] <= dim0 && dimmsetNow[1] <= dim1 && dimmsetNow[2] <= dim2 && sp[nrrelay - 1] == 1) {
-        zapczas = aktualnyCzas;  //start delay relay off
+    if ((ron == 1 || ron == 3) && (dimmsetNow[0] > dim0 || dimmsetNow[1] > dim1 || dimmsetNow[2] > dim2)) {
+        ron = 2;
         roff = 0;
-    } else if (roff == 0 && (aktualnyCzas - zapczas >= (relayToff * 1000))) {
-        roff = 1;
-        relays(nrrelay);  //relay off
+        if (sp[nrrelay - 1] != 1) {
+            relays(nrrelay);
+        }
 
-        dmstat = 1;      //for dimm module status check
-        sendNRFoff = 1;  // if relay off then sendNRF() off becouse dimm module will be start and send ready status to master (button module), then master sendNRF() with config.
+        dmstat = 0;  // for dimm module status check
+
+        if (serialmode == 1) Serial.println("Delayrelay ON");
+
+    } else if ((ron == 2) && (dimmsetNow[0] <= dim0 && dimmsetNow[1] <= dim1 && dimmsetNow[2] <= dim2)) {
+        ron = 3;
+        roff = 1;
+        zapczas = aktualnyCzas;  // start delay relay off
+
+        if (serialmode == 1) Serial.println("Delayrelay set time to OFF");
+    } else if ((roff == 1) && (aktualnyCzas - zapczas >= (relayToff * 1000))) {
+        ron = 1;
+        roff = 0;
+        relays(nrrelay);
+        if (serialmode == 1) Serial.println("Delayrelay OFF");
+
+        dmstat = 1;      // for dimm module status check
+        sendNRFoff = 1;  // if relay off then sendNRF() off, becouse dimm module will be start and send ready status to master (button module), then master sendNRF() with config.
 
         if (QtNightLightON == 1) {  // past dimLevel when NightLight is ON.
             for (int i = 0; i < 4; i++) {
@@ -2702,6 +2757,37 @@ void Delayrelay::delaydim() {
             }
         }
     }
+
+    // if ((ron == 1) && (dimmsetNow[0] > dim0 || dimmsetNow[1] > dim1 || dimmsetNow[2] > dim2)) {
+    //     // if ((ron == 1) && (dimmsetNow[0] > dim0 || dimmsetNow[1] > dim1 || dimmsetNow[2] > dim2)) {
+    //     roff = 1;
+    //     ron = 0;
+    //     dmstat = 0;
+    //     relays(nrrelay);  // relay on
+    //     if (serialmode == 1) Serial.println("Delayrelay ON");
+    // } else if (roff == 1 && sp[nrrelay - 1] == 1 && dimmsetNow[0] <= dim0 && dimmsetNow[1] <= dim1 && dimmsetNow[2] <= dim2) {
+    //     // else if (roff == 1 && dimmsetNow[0] <= dim0 && dimmsetNow[1] <= dim1 && dimmsetNow[2] <= dim2 && sp[nrrelay - 1] == 1) {
+    //     zapczas = aktualnyCzas;  // start delay relay off
+    //     roff = 0;
+    //     ron = 1;
+    //     if (serialmode == 1) Serial.println("Delayrelay set time to OFF");
+    // } else if ((roff == 0) && (sp[nrrelay - 1] == 1) && (aktualnyCzas - zapczas >= (relayToff * 1000))) {
+    //     relays(nrrelay);  // relay off
+    //     roff = 1;
+    //     ron = 1;
+
+    //     dmstat = 1;      // for dimm module status check
+    //     sendNRFoff = 1;  // if relay off then sendNRF() off becouse dimm module will be start and send ready status to master (button module), then master sendNRF() with config.
+
+    //     if (QtNightLightON == 1) {  // past dimLevel when NightLight is ON.
+    //         for (int i = 0; i < 4; i++) {
+    //             if (dimmsetLastNL[i] > 0 && (dimmsetLastNL[i] != dimmsetLast[i])) {
+    //                 dimmsetLast[i] = dimmsetLastNL[i];
+    //             }
+    //         }
+    //     }
+    //     if (serialmode == 1) Serial.println("Delayrelay OFF");
+    // }
 }
 void Delayrelay::set(int nrr, int rtoff, int d0, int d1, int d2) {
     nrrelay = nrr;
@@ -2877,7 +2963,26 @@ void dimmodulestat() {
             break;
     }
 }
-// nrf funkja wlaczania serwera www w module dimmer
+void downloadSettings() {
+    if (DevID > 1) {
+        // FirmwareVer;//3byte
+        // QtNightLightON;//1bit
+        // for (int i = 0; i < 4; i++) {
+        // dimmsetLast[i];//6byte
+        //  }
+
+        // Timestamp;
+
+        // uint32_t fndata, fndata2; // nie dziala wrocic pozniej
+        // // fndata = (dimmsetLast[0] << 24) + (FirmwareVer.toInt() << 16) + (FirmwareVer.toInt() << 8) + FirmwareVer.toInt();
+        // fndata = (FirmwareVer.toInt() << 16) + (FirmwareVer.toInt() << 8) + (FirmwareVer.toInt() & 0xFF);
+
+        // fndata2 = (dimmsetLast[2] << 24) + ((dimmsetLast[12] & 0xFF)<< 16) + (dimmsetLast[1] << 8) + (dimmsetLast[1] & 0xFF);
+
+        // sendCAN(1, 1, fndata, fndata2);
+    }
+}
+
 // wymyslic kasowanie wiadomosci sms.
 // !! - sprawdzic
 // dokonczyc przetestowac can.
@@ -2888,5 +2993,5 @@ void dimmodulestat() {
 //
 // *****
 // trzeba byc w katalogu projektu
-//projekt  pio run --target upload --upload-port 192.168.43.47
-//fs       pio run --target uploadfs --upload-port 192.168.43.47 http://192.168.0.172/
+// projekt  pio run --target upload --upload-port 192.168.43.47
+// fs       pio run --target uploadfs --upload-port 192.168.43.47 http://192.168.0.172/

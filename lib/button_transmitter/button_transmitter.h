@@ -125,21 +125,22 @@ void update_error(int err);
 void disableoled();
 void displaydelayon();
 void dimmodulestat();
+void downloadSettings();
 
 class Qtimers {
-    uint8_t active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart, dayEnd, monthEnd;
+    uint8_t active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart, dayEnd, monthEnd, tStart = 1, tStop = 0,hourCompare;
 
     // for winterSummer
     uint8_t lastDay, march, october, dayMarch, dayOctober, lastSundayMarch, lastSundayOctober;
     uint16_t a, b, c;  // for winterSummerLastSunday
+    uint16_t realTimeMinutes, startTimeMinutes,endTimeMinutes;
 
     uint16_t dimmsetLastTemp[4];
     uint16_t dimmsetMaxTemp[4];
-
     bool GE = 0;
 
    public:
-    //active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart
+    // active, function, hourStart, minutesStart, hourEnd, minutesEnd, dayStart, monthStart
     Qtimers(int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0, int = 0);  // konstruktor
     ~Qtimers();
     void winterSummerLastSunday();
@@ -169,10 +170,8 @@ class Dimlevel {
 class Delayrelay {
    private:
     uint64_t zapczas = 0;
-    bool roff = 1;
-    int nrrelay;
-    uint16_t relayToff;
-    int dim0, dim1, dim2;
+    uint8_t nrrelay, roff = 0, ron = 1;
+    uint16_t relayToff, dim0, dim1, dim2;
 
    public:
     Delayrelay(int = 10, int = 0, int = 1, int = 1, int = 1);
