@@ -69,7 +69,7 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 0, 60000);  // ntp
 uint16_t correctionTime = 7200;
 int8_t timer1on = 0, timer2on = 0, timerCU = 0, enWinterSummerT = 1;
-bool isWinter = 0;
+bool isWinter = 0, isSummer = 0;
 int TimerS1[4] = {0, 0, 0, 0};  // FOR Qtimer hour, minutes ,day ,month
 int TimerE1[4] = {0, 0, 0, 0};
 int TimerS2[4] = {0, 0, 0, 0};  // FOR Qtimer hour, minutes ,day ,month
@@ -501,9 +501,9 @@ void setup() {
         touch_pad_set_fsm_mode(TOUCH_FSM_MODE_TIMER);
         touch_pad_set_voltage(TOUCH_HVOLT_2V7, TOUCH_LVOLT_0V5, TOUCH_HVOLT_ATTEN_1V);
     }
-    realTimeUpdate();
 
     tl1.set(timer1on, 1, TimerS1[0], TimerS1[1], TimerE1[0], TimerE1[1], TimerS1[2], TimerS1[3], TimerE1[2], TimerE1[3]);
+    // tl1.set(1, 1, 1,1, 1, 2, TimerS1[2], TimerS1[3], TimerE1[2], TimerE1[3]); // for testing
     tl2.set(timer2on, 3, TimerS2[0], TimerS2[1], TimerE2[0], TimerE2[1], TimerS2[2], TimerS2[3], TimerE2[2], TimerE2[3]);
     checkUpdate.set(timerCU, 2, 21, 0, 0, 0, 0, 0, 0, 0);
 
@@ -511,7 +511,7 @@ void setup() {
 
     delayrelay1.set(1, relayToff1, 1, 1, 1);
     delayrelay2.set(2, relayToff2, 1, 1, 1);
-
+    realTimeUpdate();
     if (ServerActive == 1) {
         wifiSTAstart();
     }
@@ -2290,15 +2290,16 @@ void realTimeUpdate() {
         timeClient.begin();
         timeClient.update();
         strcpy(Timestamp, String(timeClient.getEpochTime()).c_str());
+        winterSummerTime.winterSummerLastSunday();
         setTime(String(Timestamp).toInt() + correctionTime);
     } else {
         if (DevID > 1) {
             sendCAN(1, 9, 0, 0);
         }
-        // setTime(String(Timestamp).toInt() + correctionTime);
+        winterSummerTime.winterSummerLastSunday();
+        setTime(String(Timestamp).toInt() + correctionTime);
     }
 
-    winterSummerTime.winterSummerLastSunday();
     if (DevID == 1) {
         sendCAN(255, 2, String(Timestamp).toInt() + correctionTime, 0);
         Serial.println("realTimeUpdate send CAN frame ");
@@ -2319,16 +2320,12 @@ void Qtimers::set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, 
     active = ac;
     function = fu;
 
-    startTimeMinutes = hourStart * 60 + minutesStart;
-    endTimeMinutes = hourEnd * 60 + minutesEnd;
-    hourCompare = (hourStart > hourEnd) ? 1 : 0;
-
     if (hrs <= 24) {
         hourStart = hrs;
     } else {
         if (serialmode == 1) {
             active = 0;
-            Serial.println("Litetimer - niewlasciwie podana godzina startu");
+            Serial.println("Qtimers set() - niewlasciwie podana godzina startu");
         }
     }
     if (hre < 24) {
@@ -2336,7 +2333,7 @@ void Qtimers::set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, 
     } else {
         active = 0;
         if (serialmode == 1) {
-            Serial.println("Litetimer - niewlasciwie podana godzina konca");
+            Serial.println("Qtimers set() - niewlasciwie podana godzina konca");
         }
     }
     if (mins <= 59) {
@@ -2344,7 +2341,7 @@ void Qtimers::set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, 
     } else {
         active = 0;
         if (serialmode == 1) {
-            Serial.println("Litetimer - niewlasciwie podana minuta startu");
+            Serial.println("Qtimers set() - niewlasciwie podana minuta startu");
         }
     }
     if (mine <= 59) {
@@ -2352,7 +2349,7 @@ void Qtimers::set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, 
     } else {
         active = 0;
         if (serialmode == 1) {
-            Serial.println("Litetimer - niewlasciwie podana minuta konca");
+            Serial.println("Qtimers set() - niewlasciwie podana minuta konca");
         }
     }
     if (ds <= 31) {
@@ -2360,7 +2357,7 @@ void Qtimers::set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, 
     } else {
         active = 0;
         if (serialmode == 1) {
-            Serial.println("Litetimer - niewlasciwie podany dzien startu");
+            Serial.println("Qtimers set() - niewlasciwie podany dzien startu");
         }
     }
     if (de <= 31) {
@@ -2368,7 +2365,7 @@ void Qtimers::set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, 
     } else {
         active = 0;
         if (serialmode == 1) {
-            Serial.println("Litetimer - niewlasciwie podany dzien konca");
+            Serial.println("Qtimers set() - niewlasciwie podany dzien konca");
         }
     }
     if (ms <= 12) {
@@ -2376,7 +2373,7 @@ void Qtimers::set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, 
     } else {
         active = 0;
         if (serialmode == 1) {
-            Serial.println("Litetimer - niewlasciwie podany miesiac startu");
+            Serial.println("Qtimers set() - niewlasciwie podany miesiac startu");
         }
     }
     if (me <= 12) {
@@ -2384,8 +2381,17 @@ void Qtimers::set(int ac, int fu, int hrs, int mins, int hre, int mine, int ds, 
     } else {
         active = 0;
         if (serialmode == 1) {
-            Serial.println("Litetimer - niewlasciwie podany miesiac konca");
+            Serial.println("Qtimers set() - niewlasciwie podany miesiac konca");
         }
+    }
+    startTimeMinutes = hourStart * 60 + minutesStart;
+    endTimeMinutes = hourEnd * 60 + minutesEnd;
+    hourCompare = (startTimeMinutes > endTimeMinutes) ? 1 : 0;
+    if (serialmode == 1) {
+        Serial.println("Qtimers set() startTimeMinutes " + String(startTimeMinutes));
+        Serial.println("Qtimers set() endTimeMinutes " + String(endTimeMinutes));
+        Serial.println("Qtimers set() hourCompare" + String(hourCompare));
+        Serial.println("");
     }
 }
 void Qtimers::winterSummerLastSunday() {
@@ -2412,11 +2418,12 @@ void Qtimers::winterSummerLastSunday() {
     }
 }
 void Qtimers::winterSummerTime() {
-    if (active == 1 && Qyear > 2020) {
-        if (isWinter == 0 && (Qmonth >= 10 || Qmonth <= 3) && Qday >= lastSundayOctober) {
+    if (active == 1 && Qyear > 2020) {  // ! cos nie tak...
+        if (isWinter == 0 && (((Qmonth >= 10 && Qday >= lastSundayOctober) || (Qmonth <= 3 && Qday < lastSundayMarch)) || (Qmonth > 10 || (Qmonth <= 3 && Qday < lastSundayMarch)))) {
             correctionTime -= 3600;
             setTime(String(Timestamp).toInt() + correctionTime);
             isWinter = 1;
+            isSummer = 0;
 
             if (serialmode == 1) {
                 Serial.println("WINTER TIME START ");
@@ -2428,9 +2435,10 @@ void Qtimers::winterSummerTime() {
                 sendCAN(255, 2, String(Timestamp).toInt() + correctionTime, 0);
             }
         }
-        if (isWinter == 1 && (Qmonth >= 3 && Qmonth <= 10) && Qday >= lastSundayMarch) {
+        if (isSummer == 0 && (((Qmonth >= 3 && Qday >= lastSundayMarch) && (Qmonth <= 10 && Qday < lastSundayOctober)) || (Qmonth > 3 && (Qmonth <= 10 && Qday < lastSundayOctober)))) {
             correctionTime += 3600;
             setTime(String(Timestamp).toInt() + correctionTime);
+            isSummer = 1;
             isWinter = 0;
             if (serialmode == 1) {
                 Serial.println("SUMMER TIME START ");
@@ -2444,8 +2452,7 @@ void Qtimers::tdcomp() {
         realTimeMinutes = Qhour * 60 + Qminutes;
         if (QtFWCheck) updatefw = FirmwareVersionCheck();
 
-        if (tStart == 1 && (monthStart == 0 || Qmonth == monthStart) && (dayStart == 0 || Qday == dayStart) &&
-            ((hourCompare && ((realTimeMinutes >= startTimeMinutes) || (realTimeMinutes < endTimeMinutes))) || (!hourCompare && ((realTimeMinutes >= startTimeMinutes) && (realTimeMinutes < endTimeMinutes))))) {
+        if (tStart == 1 && (monthStart == 0 || Qmonth == monthStart) && (dayStart == 0 || Qday == dayStart) && ((hourCompare && ((realTimeMinutes >= startTimeMinutes) || (realTimeMinutes < endTimeMinutes))) || (!hourCompare && ((realTimeMinutes >= startTimeMinutes) && (realTimeMinutes < endTimeMinutes))))) {
             tStart = 0;
             tStop = 1;
             if (serialmode == 1) Serial.print(" Qtimer - tdcomp START ");
@@ -2482,7 +2489,6 @@ void Qtimers::tdcomp() {
             }
         }
 
-        
         if (tStop == 1 && (monthEnd == 0 || Qmonth == monthEnd) && (dayEnd == 0 || Qday == dayEnd) && ((hourCompare && ((realTimeMinutes < startTimeMinutes) && (realTimeMinutes >= endTimeMinutes))) || (!hourCompare && ((realTimeMinutes < startTimeMinutes) || (realTimeMinutes >= endTimeMinutes))))) {
             tStop = 0;
             tStart = 1;
@@ -2494,9 +2500,7 @@ void Qtimers::tdcomp() {
                         Serial.println("night light OFF - dim 1,2,3");
                     }
                     QtNightLightON = 0;
-                    // if (dimmsetLastNL[0] > 0) dimmsetLast[0] = readEEPROM(0) * 256 + readEEPROM(1);
-                    // if (dimmsetLastNL[1] > 0) dimmsetLast[1] = readEEPROM(6) * 256 + readEEPROM(7);
-                    // if (dimmsetLastNL[2] > 0) dimmsetLast[2] = readEEPROM(8) * 256 + readEEPROM(9);
+
                     for (int i = 0; i < 4; i++) {
                         if (dimmsetLastNL[i] > 0) {
                             dimmsetLast[i] = dimmsetLastTemp[i];
